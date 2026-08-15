@@ -14,11 +14,13 @@ export function SortableItem({
   children,
   disabled = false,
   data,
+  stickyTop,
 }: {
   itemId: string;
   children?: React.ReactNode;
   disabled?: boolean;
   data: SortableData;
+  stickyTop?: number;
 }) {
   const { active, attributes, listeners, setNodeRef, isDragging, isOver, rect } = useSortable(
     { id: itemId, disabled, data }
@@ -50,10 +52,16 @@ export function SortableItem({
     <Box
       ref={setNodeRef}
       sx={{
-        position: "relative",
+        position: stickyTop === undefined ? "relative" : "sticky",
+        top: stickyTop,
+        zIndex: stickyTop === undefined ? undefined : 2,
         "::before": position === "before" ? indicator : undefined,
         "::after": position === "after" ? indicator : undefined,
-        bgcolor: showGroupHighlight ? "action.selected" : undefined,
+        bgcolor: showGroupHighlight
+          ? "action.selected"
+          : stickyTop === undefined
+            ? undefined
+            : "background.paper",
         outline: "none",
       }}
       {...attributes}

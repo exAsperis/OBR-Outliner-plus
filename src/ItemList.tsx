@@ -1,7 +1,7 @@
 import AddIcon from "@mui/icons-material/AddRounded";
 import DeleteIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditIcon from "@mui/icons-material/EditRounded";
-import ExpandLess from "@mui/icons-material/ExpandLessRounded";
+import ChevronRight from "@mui/icons-material/ChevronRightRounded";
 import ExpandMore from "@mui/icons-material/ExpandMoreRounded";
 import HiddenIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibleIcon from "@mui/icons-material/VisibilityRounded";
@@ -54,11 +54,11 @@ export function ItemList(props: Props) {
     </SortableItem>
   ));
   return <>
-    <ListItemButton dense onClick={() => setOpen(!open)} divider>
+    <ListItemButton dense onClick={() => setOpen(!open)} divider aria-expanded={open}>
       <ListItemIcon sx={{ color: "text.secondary", minWidth: "28px", "& svg": { fontSize: "1.25rem" } }}><LayerIcon layer={layer} /></ListItemIcon>
       <ListItemText primary={layerName} />
       {props.role === "GM" && !props.searching && <Tooltip title="Create virtual layer" placement="left" disableInteractive><IconButton size="small" aria-label={`Create virtual layer in ${layerName}`} onClick={(event) => { event.stopPropagation(); props.onCreate(); }}><AddIcon fontSize="small" /></IconButton></Tooltip>}
-      {open ? <ExpandLess /> : <ExpandMore />}
+      {open ? <ExpandMore /> : <ChevronRight />}
     </ListItemButton>
     <Collapse in={open} unmountOnExit><List component="div" dense>
       {definitions.length === 0 ? <><SortableItem itemId={`START:${layer}:${UNASSIGNED_ID}`} disabled={props.searching} data={{ kind: "start", nativeLayer: layer, groupId: UNASSIGNED_ID }} />{renderItems(items)}</> : <>
@@ -80,8 +80,8 @@ function Group({ definition, items, role, searching, onRename, onDelete, onGroup
   const allLocked = items.length > 0 && items.every((item) => item.locked);
   const mixedVisible = items.some((item) => item.visible) && !allVisible;
   const mixedLocked = items.some((item) => item.locked) && !allLocked;
-  const row = <ListItemButton dense onClick={() => setOpen(!open)} sx={{ pl: 3, bgcolor: "action.hover" }}>
-    {open ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}<ListItemText primary={definition.name} secondary={`${items.length} item${items.length === 1 ? "" : "s"}`} />
+  const row = <ListItemButton dense onClick={() => setOpen(!open)} aria-expanded={open} sx={{ pl: 3, bgcolor: "action.hover" }}>
+    {open ? <ExpandMore fontSize="small" /> : <ChevronRight fontSize="small" />}<ListItemText primary={definition.name} secondary={`${items.length} item${items.length === 1 ? "" : "s"}`} />
     {role === "GM" && <Stack direction="row">
       <Tooltip title={allVisible ? "Hide all" : "Show all"}><IconButton size="small" color={mixedVisible ? "warning" : "default"} disabled={!items.length} onClick={(event) => { event.stopPropagation(); onGroupProperty(items.map((item) => item.id), "visible", !allVisible); }}>{allVisible ? <VisibleIcon fontSize="small" /> : <HiddenIcon fontSize="small" />}</IconButton></Tooltip>
       <Tooltip title={allLocked ? "Unlock all" : "Lock all"}><IconButton size="small" color={mixedLocked ? "warning" : "default"} disabled={!items.length} onClick={(event) => { event.stopPropagation(); onGroupProperty(items.map((item) => item.id), "locked", !allLocked); }}>{allLocked ? <LockedIcon fontSize="small" /> : <UnlockIcon fontSize="small" />}</IconButton></Tooltip>
@@ -90,6 +90,6 @@ function Group({ definition, items, role, searching, onRename, onDelete, onGroup
   </ListItemButton>;
   return <>
     <SortableItem itemId={unassigned ? `UG:${definition.obrLayer}` : `VL:${definition.id}`} disabled={searching} data={{ kind: "group", nativeLayer: definition.obrLayer, groupId: definition.id }}>{row}</SortableItem>
-    <Collapse in={open}><List component="div" dense sx={{ pl: 2 }}><SortableItem itemId={`START:${definition.obrLayer}:${definition.id}`} disabled={searching} data={{ kind: "start", nativeLayer: definition.obrLayer, groupId: definition.id }} />{renderItems(items)}</List></Collapse>
+    <Collapse in={open}><List component="div" dense><SortableItem itemId={`START:${definition.obrLayer}:${definition.id}`} disabled={searching} data={{ kind: "start", nativeLayer: definition.obrLayer, groupId: definition.id }} />{renderItems(items)}</List></Collapse>
   </>;
 }

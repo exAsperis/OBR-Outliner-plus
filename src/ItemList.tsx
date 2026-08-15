@@ -57,7 +57,7 @@ export function ItemList(props: Props) {
     <ListItemButton dense onClick={() => setOpen(!open)} divider>
       <ListItemIcon sx={{ color: "text.secondary", minWidth: "28px", "& svg": { fontSize: "1.25rem" } }}><LayerIcon layer={layer} /></ListItemIcon>
       <ListItemText primary={layerName} />
-      {props.role === "GM" && !props.searching && <Tooltip title="Create virtual layer"><IconButton size="small" aria-label={`Create virtual layer in ${layerName}`} onClick={(event) => { event.stopPropagation(); props.onCreate(); }}><AddIcon fontSize="small" /></IconButton></Tooltip>}
+      {props.role === "GM" && !props.searching && <Tooltip title="Create virtual layer" placement="left" disableInteractive><IconButton size="small" aria-label={`Create virtual layer in ${layerName}`} onClick={(event) => { event.stopPropagation(); props.onCreate(); }}><AddIcon fontSize="small" /></IconButton></Tooltip>}
       {open ? <ExpandLess /> : <ExpandMore />}
     </ListItemButton>
     <Collapse in={open} unmountOnExit><List component="div" dense>

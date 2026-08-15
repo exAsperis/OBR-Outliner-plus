@@ -59,6 +59,10 @@ button:disabled {
   opacity: 0.5;
 }
 
+.native-layer { font-weight: 600; }
+.virtual-layer { min-height: 26px; padding-left: 26px; font-size: 0.875rem; }
+.virtual-layer.unassigned { margin-bottom: 4px; border-bottom: 1px solid rgb(127 127 127 / 25%); font-style: italic; }
+
 #status {
   margin: 4px 8px;
   color: var(--obr-error, #d32f2f);

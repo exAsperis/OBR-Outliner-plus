@@ -4,6 +4,11 @@ import { DragOverlay, UniqueIdentifier } from "@dnd-kit/core";
 import { ItemListItem } from "./ItemListItem";
 import Badge from "@mui/material/Badge";
 import { memo } from "react";
+import Paper from "@mui/material/Paper";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicatorRounded";
+import { resolveGroupId, UNASSIGNED_ID } from "./virtualLayers";
 
 export const ItemDragOverlay = memo(function ({
   dragId,
@@ -12,11 +17,56 @@ export const ItemDragOverlay = memo(function ({
 }) {
   const items = useOwlbearStore((state) => state.items);
   const selection = useOwlbearStore((state) => state.selection);
+  const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
+
+  function renderGroupOverlay(id: string) {
+    const unassigned = id.startsWith("UG:");
+    if (!unassigned && !id.startsWith("VL:")) return null;
+    const groupId = unassigned ? UNASSIGNED_ID : id.slice(3);
+    const definition = unassigned
+      ? undefined
+      : virtualLayers.layers.find((entry) => entry.id === groupId);
+    const nativeLayer = unassigned ? id.slice(3) : definition?.obrLayer;
+    if (!nativeLayer) return null;
+    const count = items.filter(
+      (item) => item.layer === nativeLayer && resolveGroupId(item, virtualLayers) === groupId
+    ).length;
+    return (
+      <DragOverlay dropAnimation={null}>
+        <Paper
+          elevation={6}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            width: "340px",
+            maxWidth: "calc(100vw - 24px)",
+            minHeight: "44px",
+            px: 1.5,
+            borderRadius: "12px",
+            color: "primary.contrastText",
+            bgcolor: "primary.main",
+            cursor: "grabbing",
+          }}
+        >
+          <DragIndicatorIcon sx={{ mr: 1, opacity: 0.8 }} />
+          <Box minWidth={0}>
+            <Typography noWrap fontWeight={500}>{definition?.name ?? "Unassigned"}</Typography>
+            <Typography variant="caption" sx={{ opacity: 0.8 }}>
+              {count} item{count === 1 ? "" : "s"}
+            </Typography>
+          </Box>
+        </Paper>
+      </DragOverlay>
+    );
+  }
 
   function renderDragOverlays() {
-    if (!dragId || !selection || typeof dragId !== "string") {
+    if (!dragId || typeof dragId !== "string") {
       return null;
     }
+    const groupOverlay = renderGroupOverlay(dragId);
+    if (groupOverlay) return groupOverlay;
+    if (!selection) return null;
     const itemIds = items.map((item) => item.id);
     let selectedIndices = selection.map((id) => itemIds.indexOf(id));
     const activeIndex = itemIds.indexOf(dragId);

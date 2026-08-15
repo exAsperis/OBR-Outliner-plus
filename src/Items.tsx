@@ -1,433 +1,101 @@
-import {
-  DndContext,
-  DragEndEvent,
-  DragStartEvent,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  UniqueIdentifier,
-  closestCenter,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import OBR, { Item, Math2, Vector2, isShape } from "@owlbear-rodeo/sdk";
+import { DndContext, type DragEndEvent, type DragStartEvent, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import OBR, { type Item, Math2, type Vector2, isShape } from "@owlbear-rodeo/sdk";
 import Fuse from "fuse.js";
 import { useMemo, useState } from "react";
 import { ItemDragOverlay } from "./ItemDragOverlay";
 import { ItemList } from "./ItemList";
-import { isTextable, lerp, toPlainText } from "./helpers";
+import { isTextable, toPlainText } from "./helpers";
 import { stackItems } from "./stackItems";
 import type { StackOperation } from "./stacking";
 import { useOwlbearStore } from "./useOwlbearStore";
+import { UNASSIGNED_ID, orderedGroupIds, resolveGroupId, type VirtualLayerDefinition } from "./virtualLayers";
+import { addVirtualLayer, assignItems, moveStackingGroup, removeVirtualLayer, setGroupProperty, updateVirtualLayerName } from "./virtualLayerService";
+import { getVerticalDropPosition, type DropPosition } from "./dragPosition";
 
-const VALID_LAYERS = new Set<Item["layer"]>([
-  "POINTER",
-  "RULER",
-  "TEXT",
-  "NOTE",
-  "ATTACHMENT",
-  "CHARACTER",
-  "MOUNT",
-  "PROP",
-  "DRAWING",
-  "MAP",
-]);
+const VALID_LAYERS = new Set<Item["layer"]>(["POINTER", "RULER", "TEXT", "NOTE", "ATTACHMENT", "CHARACTER", "MOUNT", "PROP", "DRAWING", "MAP"]);
 
 export function Items({ search }: { search: string }) {
   const items = useOwlbearStore((state) => state.items);
+  const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const role = useOwlbearStore((state) => state.role);
   const selection = useOwlbearStore((state) => state.selection);
-
   const searching = Boolean(search);
+  const fuse = useMemo(() => new Fuse(items.map((item) => ({ id: item.id, name: item.name, layer: item.layer, type: item.type, text: isTextable(item) ? `${item.text.plainText} ${toPlainText(item.text.richText)}` : "", shape: isShape(item) ? item.shapeType : "" })), { keys: ["id", "name", "layer", "type", "text", "shape"], threshold: 0.25 }), [items]);
+  const filtered = useMemo(() => search ? items.filter((item) => new Set(fuse.search(search).map((result) => result.item.id)).has(item.id)) : items, [fuse, items, search]);
+  const shown = useMemo(() => filtered.filter((item) => (VALID_LAYERS.has(item.layer) || (item.layer === "FOG" && role === "GM")) && !(!item.visible && role === "PLAYER")).sort((a, b) => b.zIndex - a.zIndex || a.id.localeCompare(b.id)), [filtered, role]);
+  const shownIds = shown.map((item) => item.id);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 3 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }), useSensor(KeyboardSensor));
 
-  const fuse = useMemo(() => {
-    if (!searching) {
-      return;
-    }
-    const searchItems = items.map((item) => {
-      const searchItem = {
-        id: item.id,
-        name: item.name,
-        layer: item.layer,
-        type: item.type,
-        shapeType: "",
-        plainText: "",
-        richText: "",
-      };
-
-      // Search item text
-      if (isTextable(item)) {
-        searchItem.plainText = item.text.plainText;
-        searchItem.richText = toPlainText(item.text.richText);
-      }
-
-      if (isShape(item)) {
-        searchItem.shapeType = item.shapeType;
-      }
-
-      return searchItem;
-    });
-
-    return new Fuse(searchItems, {
-      keys: [
-        "id",
-        "name",
-        "layer",
-        "type",
-        "shapeType",
-        "plainText",
-        "richText",
-      ],
-      threshold: 0.25,
-    });
-  }, [items, searching]);
-
-  const filteredItems = useMemo(() => {
-    if (search && fuse) {
-      const results = fuse.search(search);
-      const ids = new Set(results.map((result) => result.item.id));
-      return items.filter((item) => ids.has(item.id));
-    }
-    return items;
-  }, [items, fuse, search]);
-
-  const [shownItemsByLayer, shownIds] = useMemo(() => {
-    const layers: Record<Item["layer"], Item[]> = {
-      POPOVER: [],
-      POINTER: [],
-      GRID: [],
-      CONTROL: [],
-      FOG: [],
-      RULER: [],
-      TEXT: [],
-      NOTE: [],
-      ATTACHMENT: [],
-      CHARACTER: [],
-      PROP: [],
-      DRAWING: [],
-      MOUNT: [],
-      MAP: [],
-    };
-
-    const sortedItems = filteredItems.sort((a, b) => b.zIndex - a.zIndex);
-
-    for (const item of sortedItems) {
-      const hidden = !item.visible && role === "PLAYER";
-      const valid =
-        VALID_LAYERS.has(item.layer) || (item.layer === "FOG" && role === "GM");
-      if (!hidden && valid) {
-        layers[item.layer].push(item);
-      }
-    }
-
-    const allIds: string[] = [];
-    for (const layer of Object.keys(layers)) {
-      allIds.push(...layers[layer as Item["layer"]].map((item) => item.id));
-    }
-
-    return [layers, allIds];
-  }, [filteredItems, role]);
-
-  async function handleItemSelect(
-    item: Item,
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>
-  ) {
-    let newSelection: string[] = [];
-    const currentSelection = selection ?? [];
-    const { id } = item;
-    if (event.metaKey || event.ctrlKey) {
-      // Make a multi selection
-      if (currentSelection.includes(id)) {
-        newSelection = currentSelection.filter((c) => c !== id);
-      } else {
-        newSelection = [...currentSelection, id];
-      }
-    } else if (event.shiftKey) {
-      // Make a range selection
-      if (currentSelection.length > 0) {
-        const currentIndex = shownIds.indexOf(id);
-        const lastIndex = shownIds.indexOf(
-          currentSelection[currentSelection.length - 1]
-        );
-        const idsToAdd: string[] = [];
-        const idsToRemove: string[] = [];
-        const direction = currentIndex > lastIndex ? 1 : -1;
-        for (
-          let i = lastIndex + direction;
-          direction < 0 ? i >= currentIndex : i <= currentIndex;
-          i += direction
-        ) {
-          const localId = shownIds[i];
-          if (currentSelection.includes(localId)) {
-            idsToRemove.push(localId);
-          } else {
-            idsToAdd.push(localId);
-          }
-        }
-        newSelection = [...currentSelection, ...idsToAdd].filter(
-          (id) => !idsToRemove.includes(id)
-        );
-      } else {
-        newSelection = [id];
-      }
-    } else {
-      // Single selection
-      newSelection = [id];
-    }
-
-    if (newSelection.length === 0) {
-      await OBR.player.deselect();
-    } else {
-      await OBR.player.select(newSelection);
-    }
+  async function select(item: Item, event: React.MouseEvent<HTMLDivElement>) {
+    const current = selection ?? [];
+    let next: string[];
+    if (event.metaKey || event.ctrlKey) next = current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id];
+    else if (event.shiftKey && current.length) {
+      const a = shownIds.indexOf(current[current.length - 1]); const b = shownIds.indexOf(item.id);
+      next = [...new Set([...current, ...shownIds.slice(Math.min(a, b), Math.max(a, b) + 1)])];
+    } else next = [item.id];
+    if (next.length) await OBR.player.select(next); else await OBR.player.deselect();
   }
 
-  async function handleItemFocus(item: Item) {
-    const focusedIds = [...new Set([...(selection ?? []), item.id])];
-
-    await recenterItems(focusedIds);
+  async function recenter(ids: string[]) {
+    const bounds = await OBR.scene.items.getItemBounds(ids);
+    const center = await OBR.viewport.transformPoint(bounds.center);
+    const viewportCenter: Vector2 = { x: (await OBR.viewport.getWidth()) / 2, y: (await OBR.viewport.getHeight()) / 2 };
+    const scale = await OBR.viewport.getScale();
+    const position = Math2.multiply(await OBR.viewport.inverseTransformPoint(Math2.subtract(center, viewportCenter)), -scale);
+    await OBR.viewport.animateTo({ scale, position });
   }
 
-  async function handleItemLocate(item: Item) {
-    await recenterItems([item.id]);
-  }
+  function promptCreate(layer: Item["layer"]) { const name = window.prompt("Virtual layer name"); if (name !== null) void addVirtualLayer(layer, name).catch((error: Error) => window.alert(error.message)); }
+  function promptRename(definition: VirtualLayerDefinition) { const name = window.prompt("Rename virtual layer", definition.name); if (name !== null) void updateVirtualLayerName(definition.id, name).catch((error: Error) => window.alert(error.message)); }
+  function confirmDelete(definition: VirtualLayerDefinition) { if (window.confirm(`Delete virtual layer "${definition.name}"?\nIts objects will become Unassigned. No objects will be deleted.`)) void removeVirtualLayer(definition.id).catch(() => window.alert("Unable to delete the virtual layer.")); }
 
-  async function recenterItems(focusedIds: string[]) {
-
-    // Convert the center of the selected item to screen-space
-    const bounds = await OBR.scene.items.getItemBounds(focusedIds);
-    const boundsAbsoluteCenter = await OBR.viewport.transformPoint(
-      bounds.center
-    );
-
-    // Get the center of the viewport in screen-space
-    const viewportWidth = await OBR.viewport.getWidth();
-    const viewportHeight = await OBR.viewport.getHeight();
-    const viewportCenter: Vector2 = {
-      x: viewportWidth / 2,
-      y: viewportHeight / 2,
-    };
-
-    // Offset the item center by the viewport center
-    const absoluteCenter = Math2.subtract(boundsAbsoluteCenter, viewportCenter);
-
-    // Convert the center to world-space
-    const relativeCenter = await OBR.viewport.inverseTransformPoint(
-      absoluteCenter
-    );
-
-    // Invert and scale the world-space position to match a viewport position offset
-    const viewportScale = await OBR.viewport.getScale();
-    const viewportPosition = Math2.multiply(relativeCenter, -viewportScale);
-
-    await OBR.viewport.animateTo({
-      scale: viewportScale,
-      position: viewportPosition,
-    });
-  }
-
-  async function handleItemStack(item: Item, operation: StackOperation) {
-    await stackItems(items, [item.id], operation);
-  }
-
-  const mouseSensor = useSensor(MouseSensor, {
-    activationConstraint: { distance: 3 },
-  });
-  const touchSensor = useSensor(TouchSensor, {
-    activationConstraint: { delay: 250, tolerance: 5 },
-  });
-  const keyboardSensor = useSensor(KeyboardSensor);
-
-  const sensors = useSensors(mouseSensor, touchSensor, keyboardSensor);
-
-  const [dragId, setDragId] = useState<UniqueIdentifier | null>(null);
-
-  function handleDragStart(event: DragStartEvent) {
-    const { active } = event;
-
-    if (typeof active.id !== "string") {
-      return;
+  function dragStart(event: DragStartEvent) { if (typeof event.active.id !== "string") return; setDragId(event.active.id); if (!event.active.id.includes(":" ) && (!selection?.includes(event.active.id))) void OBR.player.select([event.active.id]); }
+  function dragEnd(event: DragEndEvent) {
+    setDragId(null); if (searching || typeof event.active.id !== "string" || typeof event.over?.id !== "string") return;
+    const active = event.active.id, over = event.over.id;
+    const translated = event.active.rect.current.translated ?? event.active.rect.current.initial;
+    const dropPosition: DropPosition = translated
+      ? getVerticalDropPosition(translated, event.over.rect)
+      : "before";
+    if (active.startsWith("VL:") || active.startsWith("UG:")) {
+      if (role !== "GM") return;
+      const unassigned = active.startsWith("UG:");
+      const id = unassigned ? UNASSIGNED_ID : active.slice(3);
+      const definition = unassigned ? undefined : virtualLayers.layers.find((entry) => entry.id === id);
+      const nativeLayer = unassigned ? active.slice(3) as Item["layer"] : definition?.obrLayer;
+      if (!nativeLayer) return;
+      const overId = over.startsWith("VL:") ? over.slice(3) : over.startsWith("UG:") && over.slice(3) === nativeLayer ? UNASSIGNED_ID : undefined;
+      if (!overId || overId === id) return;
+      const withoutActive = orderedGroupIds(virtualLayers, nativeLayer).filter((groupId) => groupId !== id);
+      const overIndex = withoutActive.indexOf(overId);
+      if (overIndex >= 0) void moveStackingGroup(nativeLayer, id, overIndex + (dropPosition === "after" ? 1 : 0)); return;
     }
-
-    if (!selection || !selection.includes(active.id)) {
-      OBR.player.select([active.id]);
-    }
-
-    setDragId(active.id);
+    if (role !== "GM") return;
+    const ids = selection?.includes(active) ? selection : [active]; const activeItem = items.find((item) => item.id === active); if (!activeItem) return;
+    if (ids.some((id) => items.find((item) => item.id === id)?.layer !== activeItem.layer)) return;
+    let destination: string | undefined; let nativeLayer = activeItem.layer; let targetId: string | undefined;
+    if (over.startsWith("START:")) { const [, layer, group] = over.split(":"); nativeLayer = layer as Item["layer"]; destination = group === UNASSIGNED_ID ? undefined : group; }
+    else if (over.startsWith("VL:")) destination = over.slice(3);
+    else if (over.startsWith("UG:")) destination = undefined;
+    else { const item = items.find((entry) => entry.id === over); if (!item) return; nativeLayer = item.layer; destination = resolveGroupId(item, virtualLayers); if (destination === UNASSIGNED_ID) destination = undefined; targetId = item.id; }
+    const definition = destination ? virtualLayers.layers.find((entry) => entry.id === destination) : undefined;
+    if (definition && definition.obrLayer !== activeItem.layer) return;
+    if (nativeLayer !== activeItem.layer) return;
+    void assignItems(ids, destination, nativeLayer, targetId, dropPosition);
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    if (typeof event.over?.id === "string") {
-      // If we're over the START pseudo element move to the top of the layer
-      if (event.over && event.over.id.startsWith("START_")) {
-        const layer = event.over.id.slice(6) as Item["layer"];
-        // Move selection descending from the first zIndex of this layer
-        const firstItem = shownItemsByLayer[layer][0];
-        if (firstItem) {
-          moveSelectionAfter(firstItem.zIndex, firstItem.layer);
-        } else {
-          moveSelectionLayer(layer);
-        }
-      } else {
-        const overIndex = shownIds.indexOf(event.over.id);
-        const overItem = items.find((item) => item.id === event.over?.id);
-        const draggingItem = items.find((item) => item.id === dragId);
-        // If we're over another item
-        if (draggingItem && overItem && draggingItem !== overItem) {
-          const nextIndex = overIndex + 1;
-          const nextId = shownIds[nextIndex];
-          const nextItem = items.find((item) => item.id === nextId);
-
-          // If we're between two items on the same layer
-          if (nextItem && nextItem.layer === overItem.layer) {
-            // Insert selection between items on the same layer
-            const minZIndex = overItem.zIndex;
-            const maxZIndex = nextItem.zIndex;
-            moveSelectionBetween(minZIndex, maxZIndex, overItem.layer);
-          } else {
-            // If we're at the end of the list
-            moveSelectionBefore(overItem.zIndex, overItem.layer);
-          }
-        }
-      }
-    }
-
-    setDragId(null);
-  }
-
-  // Move the current selection to a new layer
-  async function moveSelectionLayer(layer: Item["layer"]) {
-    if (!selection) {
-      return;
-    }
-
-    await OBR.scene.items.updateItems(selection, (items) => {
-      for (const item of items) {
-        item.layer = layer;
-      }
-    });
-  }
-
-  // Move the current selection between the input zIndex's
-  async function moveSelectionBetween(
-    minZIndex: number,
-    maxZIndex: number,
-    layer?: Item["layer"]
-  ) {
-    if (!selection) {
-      return;
-    }
-
-    // Evenly distribute the items between the min and max by
-    // lerping between them with an alpha determined by the
-    // selection length
-    const lerpAlpha = 1 / (selection.length + 1);
-    await OBR.scene.items.updateItems(
-      selection.sort((a, b) => shownIds.indexOf(a) - shownIds.indexOf(b)),
-      (items) => {
-        let i = 1;
-        for (const item of items) {
-          item.zIndex = lerp(minZIndex, maxZIndex, lerpAlpha * i);
-          i++;
-          if (layer) {
-            item.layer = layer;
-          }
-        }
-      }
-    );
-  }
-
-  // Move the current selection to before the input zIndex
-  async function moveSelectionBefore(
-    startZIndex: number,
-    layer?: Item["layer"]
-  ) {
-    if (!selection) {
-      return;
-    }
-
-    await OBR.scene.items.updateItems(
-      selection.sort((a, b) => shownIds.indexOf(a) - shownIds.indexOf(b)),
-      (items) => {
-        let i = 1;
-        for (const item of items) {
-          item.zIndex = startZIndex - i;
-          i++;
-          if (layer) {
-            item.layer = layer;
-          }
-        }
-      }
-    );
-  }
-
-  // Move the current selection to after the input zIndex
-  async function moveSelectionAfter(endZIndex: number, layer?: Item["layer"]) {
-    if (!selection) {
-      return;
-    }
-
-    await OBR.scene.items.updateItems(
-      selection.sort((a, b) => shownIds.indexOf(b) - shownIds.indexOf(a)),
-      (items) => {
-        let i = 1;
-        for (const item of items) {
-          item.zIndex = endZIndex + i;
-          i++;
-          if (layer) {
-            item.layer = layer;
-          }
-        }
-      }
-    );
-  }
-
-  function handleDragCancel() {
-    setDragId(null);
-  }
-
-  const shownLayers = useMemo<Item["layer"][]>(() => {
-    if (!searching) {
-      const layers = [...VALID_LAYERS];
-      if (role == "GM") {
-        return [layers[0], "FOG", ...layers.slice(1)];
-      } else {
-        return layers;
-      }
-    } else {
-      // When searching only show layers with results
-      return Object.entries(shownItemsByLayer)
-        .filter(([, items]) => items.length > 0)
-        .map(([layer]) => layer) as Item["layer"][];
-    }
-  }, [searching, shownItemsByLayer, role]);
-
-  return (
-    <DndContext
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}
-      collisionDetection={closestCenter}
-      sensors={sensors}
-    >
-      <SortableContext items={shownIds} strategy={verticalListSortingStrategy}>
-        {shownLayers.map((layer) => (
-          <ItemList
-            key={layer}
-            items={shownItemsByLayer[layer]}
-            layer={layer as Item["layer"]}
-            onItemSelect={handleItemSelect}
-            onItemFocus={handleItemFocus}
-            onItemLocate={handleItemLocate}
-            onItemStack={handleItemStack}
-          />
-        ))}
-        <ItemDragOverlay dragId={dragId} />
-      </SortableContext>
-    </DndContext>
-  );
+  const shownLayers = useMemo(() => {
+    const base = [...VALID_LAYERS]; if (role === "GM") base.splice(1, 0, "FOG");
+    return searching ? base.filter((layer) => shown.some((item) => item.layer === layer)) : base;
+  }, [role, searching, shown]);
+  const sortableIds = [...shownIds, ...virtualLayers.layers.map((entry) => `VL:${entry.id}`), ...shownLayers.map((layer) => `UG:${layer}`)];
+  return <DndContext onDragStart={dragStart} onDragEnd={dragEnd} onDragCancel={() => setDragId(null)} collisionDetection={closestCenter} sensors={sensors}>
+    <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+      {shownLayers.map((layer) => <ItemList key={layer} layer={layer} role={role} searching={searching} items={shown.filter((item) => item.layer === layer)} definitions={virtualLayers.layers.filter((entry) => entry.obrLayer === layer)} groupOrder={orderedGroupIds(virtualLayers, layer)} resolveGroup={(item) => resolveGroupId(item, virtualLayers)} onCreate={() => promptCreate(layer)} onRename={promptRename} onDelete={confirmDelete} onGroupProperty={(ids, property, value) => void setGroupProperty(ids, property, value)} onItemSelect={select} onItemFocus={(item) => void recenter([...new Set([...(selection ?? []), item.id])])} onItemLocate={(item) => void recenter([item.id])} onItemStack={(item, operation: StackOperation) => void stackItems(items, [item.id], operation)} />)}
+      <ItemDragOverlay dragId={dragId} />
+    </SortableContext>
+  </DndContext>;
 }

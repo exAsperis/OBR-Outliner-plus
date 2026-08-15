@@ -1,6 +1,7 @@
 import OBR, { Player } from "@owlbear-rodeo/sdk";
 import { useOwlbearStore } from "./useOwlbearStore";
 import { useEffect } from "react";
+import { stateFromMetadata, EMPTY_VIRTUAL_LAYER_STATE } from "./virtualLayers";
 
 // Sync OBR with the apps Zustand store
 export function useOwlbearStoreSync() {
@@ -20,6 +21,13 @@ export function useOwlbearStoreSync() {
       setItems([]);
     }
   }, [sceneReady, setItems]);
+
+  const setVirtualLayers = useOwlbearStore((state) => state.setVirtualLayers);
+  useEffect(() => {
+    if (!sceneReady) { setVirtualLayers(EMPTY_VIRTUAL_LAYER_STATE); return; }
+    OBR.scene.getMetadata().then((metadata) => setVirtualLayers(stateFromMetadata(metadata)));
+    return OBR.scene.onMetadataChange((metadata) => setVirtualLayers(stateFromMetadata(metadata)));
+  }, [sceneReady, setVirtualLayers]);
 
   const setRole = useOwlbearStore((state) => state.setRole);
   const setSelection = useOwlbearStore((state) => state.setSelection);

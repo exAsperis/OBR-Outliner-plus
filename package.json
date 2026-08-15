@@ -1,10 +1,11 @@
 {
   "name": "obr-outliner-plus",
   "private": true,
-  "version": "0.3.1",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:obr": "vite --host 127.0.0.1 --port 5173 --strictPort",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test": "node --test --experimental-strip-types tests/*.test.ts",

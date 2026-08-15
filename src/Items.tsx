@@ -79,9 +79,12 @@ export function Items({ search }: { search: string }) {
       while (opacity > 0) {
         await new Promise((resolve) => window.setTimeout(resolve, 50));
         opacity = Math.max(0, 1 - (performance.now() - startedAt) / 3000);
-        await OBR.scene.local.updateItems([highlight], (items) => {
-          items[0].style.fillOpacity = opacity;
-        });
+        await OBR.scene.local.updateItems(
+          (candidate): candidate is typeof highlight => candidate.id === highlight.id && isShape(candidate),
+          (items) => {
+            items[0].style.fillOpacity = opacity;
+          },
+        );
       }
     } finally {
       await OBR.scene.local.deleteItems([highlight.id]);

@@ -23,7 +23,7 @@ export function ImageIcon({ item }: { item: Image }) {
 
   useEffect(() => {
     createThumbnailIfNeeded(item);
-  }, []);
+  }, [createThumbnailIfNeeded, item]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {

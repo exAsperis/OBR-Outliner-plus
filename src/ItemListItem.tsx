@@ -19,16 +19,24 @@ import ListItem from "@mui/material/ListItem";
 import Stack from "@mui/material/Stack";
 import { IconButton } from "@mui/material";
 import { useItemHsaPermission } from "./useHasPermission";
+import LocateIcon from "@mui/icons-material/CenterFocusStrongRounded";
+import SendToBackIcon from "@mui/icons-material/FlipToBackRounded";
+import SendToFrontIcon from "@mui/icons-material/FlipToFrontRounded";
+import type { StackOperation } from "./stacking";
 
 export const ItemListItem = memo(function ({
   item,
   onClick,
   onDoubleClick,
+  onLocate,
+  onStack,
   dragging,
 }: {
   item: Item;
   onClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
   onDoubleClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+  onLocate?: () => void;
+  onStack?: (operation: StackOperation) => void;
   dragging?: boolean;
 }) {
   const selected = useOwlbearStore(
@@ -41,19 +49,39 @@ export const ItemListItem = memo(function ({
   const theme = useTheme();
 
   const [hovering, setHovering] = useState(false);
+  const [focusWithin, setFocusWithin] = useState(false);
 
   const hasUpdatePermission = useItemHsaPermission(item, "UPDATE");
   const showLocked = useMemo(() => {
-    return (item.locked || selected || hovering) && hasUpdatePermission;
-  }, [item.locked, selected, hovering, hasUpdatePermission]);
+    return (
+      (item.locked || selected || hovering || focusWithin) &&
+      hasUpdatePermission
+    );
+  }, [item.locked, selected, hovering, focusWithin, hasUpdatePermission]);
 
   const showVisible = useMemo(() => {
     return (
-      (!item.visible || selected || hovering || showLocked) && role === "GM"
+      (!item.visible || selected || hovering || focusWithin || showLocked) &&
+      role === "GM"
     );
-  }, [item.visible, selected, hovering, showLocked, role]);
+  }, [item.visible, selected, hovering, focusWithin, showLocked, role]);
 
-  const showActions = inView && (showVisible || showLocked);
+  const showActions =
+    inView &&
+    (hovering || focusWithin || selected || item.locked || !item.visible);
+
+  function stopActionEvent(event: React.SyntheticEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function handleActionClick(
+    event: React.MouseEvent<HTMLButtonElement>,
+    action: () => void
+  ) {
+    stopActionEvent(event);
+    action();
+  }
 
   function handleLockClick() {
     OBR.scene.items.updateItems([item], (items) => {
@@ -74,14 +102,59 @@ export const ItemListItem = memo(function ({
         showActions ? (
           <Stack
             direction="row"
-            sx={{ opacity: !hovering && !selected ? 0.5 : 1 }}
+            sx={{ opacity: !hovering && !focusWithin && !selected ? 0.5 : 1 }}
           >
+            <Tooltip title="Locate" disableInteractive>
+              <IconButton
+                aria-label="Locate"
+                size="small"
+                onPointerDown={stopActionEvent}
+                onClick={(event) =>
+                  handleActionClick(event, () => onLocate?.())
+                }
+              >
+                <LocateIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            {hasUpdatePermission && (
+              <Tooltip title="Send to Back" disableInteractive>
+                <IconButton
+                  aria-label="Send to Back"
+                  size="small"
+                  onPointerDown={stopActionEvent}
+                  onClick={(event) =>
+                    handleActionClick(event, () => onStack?.("back"))
+                  }
+                >
+                  <SendToBackIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            {hasUpdatePermission && (
+              <Tooltip title="Send to Front" disableInteractive>
+                <IconButton
+                  aria-label="Send to Front"
+                  size="small"
+                  onPointerDown={stopActionEvent}
+                  onClick={(event) =>
+                    handleActionClick(event, () => onStack?.("front"))
+                  }
+                >
+                  <SendToFrontIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
             {showLocked && (
               <Tooltip
                 title={item.locked ? "Unlock" : "Lock"}
                 disableInteractive
               >
-                <IconButton size="small" edge="end" onClick={handleLockClick}>
+                <IconButton
+                  aria-label={item.locked ? "Unlock" : "Lock"}
+                  size="small"
+                  onPointerDown={stopActionEvent}
+                  onClick={(event) => handleActionClick(event, handleLockClick)}
+                >
                   {item.locked ? (
                     <LockedIcon fontSize="small" />
                   ) : (
@@ -105,8 +178,11 @@ export const ItemListItem = memo(function ({
               >
                 <IconButton
                   size="small"
-                  edge="end"
-                  onClick={handleVisibleClick}
+                  aria-label={item.visible ? "Hide" : "Show"}
+                  onPointerDown={stopActionEvent}
+                  onClick={(event) =>
+                    handleActionClick(event, handleVisibleClick)
+                  }
                 >
                   {item.visible ? (
                     item.layer === "FOG" ? (
@@ -135,9 +211,15 @@ export const ItemListItem = memo(function ({
           setHovering(false);
         }
       }}
+      onFocus={() => setFocusWithin(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setFocusWithin(false);
+        }
+      }}
       sx={{
         ".MuiListItemButton-root": {
-          pr: showActions ? "64px" : undefined,
+          pr: showActions ? "168px" : undefined,
         },
       }}
     >

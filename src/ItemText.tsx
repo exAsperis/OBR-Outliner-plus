@@ -18,7 +18,7 @@ export function ItemText({ item }: { item: Item }) {
     } else {
       return item.name;
     }
-  }, [item.name, role]);
+  }, [item, role]);
 
   if (isTextable(item)) {
     return <TextableText item={item} name={name} />;

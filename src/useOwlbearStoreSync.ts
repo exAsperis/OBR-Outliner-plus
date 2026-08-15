@@ -8,7 +8,7 @@ export function useOwlbearStoreSync() {
   useEffect(() => {
     OBR.scene.isReady().then(setSceneReady);
     return OBR.scene.onReadyChange(setSceneReady);
-  }, []);
+  }, [setSceneReady]);
 
   const sceneReady = useOwlbearStore((state) => state.sceneReady);
   const setItems = useOwlbearStore((state) => state.setItems);
@@ -19,7 +19,7 @@ export function useOwlbearStoreSync() {
     } else {
       setItems([]);
     }
-  }, [sceneReady]);
+  }, [sceneReady, setItems]);
 
   const setRole = useOwlbearStore((state) => state.setRole);
   const setSelection = useOwlbearStore((state) => state.setSelection);
@@ -31,11 +31,11 @@ export function useOwlbearStoreSync() {
     OBR.player.getRole().then(setRole);
     OBR.player.getSelection().then(setSelection);
     return OBR.player.onChange(handlePlayerChange);
-  }, []);
+  }, [setRole, setSelection]);
 
   const setPermissions = useOwlbearStore((state) => state.setPermissions);
   useEffect(() => {
     OBR.room.getPermissions().then(setPermissions);
     return OBR.room.onPermissionsChange(setPermissions);
-  }, []);
+  }, [setPermissions]);
 }

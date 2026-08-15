@@ -20,6 +20,8 @@ import { useMemo, useState } from "react";
 import { ItemDragOverlay } from "./ItemDragOverlay";
 import { ItemList } from "./ItemList";
 import { isTextable, lerp, toPlainText } from "./helpers";
+import { stackItems } from "./stackItems";
+import type { StackOperation } from "./stacking";
 import { useOwlbearStore } from "./useOwlbearStore";
 
 const VALID_LAYERS = new Set<Item["layer"]>([
@@ -187,6 +189,15 @@ export function Items({ search }: { search: string }) {
   async function handleItemFocus(item: Item) {
     const focusedIds = [...new Set([...(selection ?? []), item.id])];
 
+    await recenterItems(focusedIds);
+  }
+
+  async function handleItemLocate(item: Item) {
+    await recenterItems([item.id]);
+  }
+
+  async function recenterItems(focusedIds: string[]) {
+
     // Convert the center of the selected item to screen-space
     const bounds = await OBR.scene.items.getItemBounds(focusedIds);
     const boundsAbsoluteCenter = await OBR.viewport.transformPoint(
@@ -217,6 +228,10 @@ export function Items({ search }: { search: string }) {
       scale: viewportScale,
       position: viewportPosition,
     });
+  }
+
+  async function handleItemStack(item: Item, operation: StackOperation) {
+    await stackItems(items, [item.id], operation);
   }
 
   const mouseSensor = useSensor(MouseSensor, {
@@ -386,7 +401,7 @@ export function Items({ search }: { search: string }) {
     } else {
       // When searching only show layers with results
       return Object.entries(shownItemsByLayer)
-        .filter(([_, items]) => items.length > 0)
+        .filter(([, items]) => items.length > 0)
         .map(([layer]) => layer) as Item["layer"][];
     }
   }, [searching, shownItemsByLayer, role]);
@@ -407,6 +422,8 @@ export function Items({ search }: { search: string }) {
             layer={layer as Item["layer"]}
             onItemSelect={handleItemSelect}
             onItemFocus={handleItemFocus}
+            onItemLocate={handleItemLocate}
+            onItemStack={handleItemStack}
           />
         ))}
         <ItemDragOverlay dragId={dragId} />

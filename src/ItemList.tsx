@@ -11,12 +11,15 @@ import { ItemListItem } from "./ItemListItem";
 import { LayerIcon } from "./LayerIcon";
 import { SortableItem } from "./SortableItem";
 import { capitalize } from "./helpers";
+import type { StackOperation } from "./stacking";
 
 export function ItemList({
   layer,
   items,
   onItemSelect,
   onItemFocus,
+  onItemLocate,
+  onItemStack,
 }: {
   layer: Item["layer"];
   items: Item[];
@@ -24,10 +27,9 @@ export function ItemList({
     item: Item,
     event: React.MouseEvent<HTMLDivElement, MouseEvent>
   ) => void;
-  onItemFocus: (
-    item: Item,
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>
-  ) => void;
+  onItemFocus: (item: Item) => void;
+  onItemLocate: (item: Item) => void;
+  onItemStack: (item: Item, operation: StackOperation) => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -63,7 +65,9 @@ export function ItemList({
               <ItemListItem
                 item={item}
                 onClick={(e) => onItemSelect(item, e)}
-                onDoubleClick={(e) => onItemFocus(item, e)}
+                onDoubleClick={() => onItemFocus(item)}
+                onLocate={() => onItemLocate(item)}
+                onStack={(operation) => onItemStack(item, operation)}
               />
             </SortableItem>
           ))}

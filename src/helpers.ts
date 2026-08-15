@@ -1,4 +1,4 @@
-import { RichText, TextContent } from "@owlbear-rodeo/sdk";
+import { TextContent } from "@owlbear-rodeo/sdk";
 
 export interface Textable {
   id: string;
@@ -6,15 +6,22 @@ export interface Textable {
   name: string;
 }
 
-export function isTextable(item: any): item is Textable {
-  return typeof item.id === "string" && typeof item.text === "object";
+export function isTextable(item: unknown): item is Textable {
+  return (
+    isPlainObject(item) &&
+    typeof item.id === "string" &&
+    typeof item.text === "object" &&
+    item.text !== null
+  );
 }
 
 export function isPlainObject(
   item: unknown
-): item is Record<keyof any, unknown> {
+): item is Record<PropertyKey, unknown> {
   return (
-    item !== null && typeof item === "object" && item.constructor === Object
+    item !== null &&
+    typeof item === "object" &&
+    Object.getPrototypeOf(item) === Object.prototype
   );
 }
 
@@ -22,19 +29,19 @@ interface TextNode {
   text: string;
 }
 
-function isTextNode(node: any): node is TextNode {
+function isTextNode(node: unknown): node is TextNode {
   return isPlainObject(node) && typeof node.text === "string";
 }
 
 interface Descendent {
-  children: any[];
+  children: unknown[];
 }
 
-function isDescendent(node: any): node is Descendent {
+function isDescendent(node: unknown): node is Descendent {
   return isPlainObject(node) && Array.isArray(node.children);
 }
 
-export function toPlainText(node: RichText): string {
+export function toPlainText(node: unknown): string {
   if (isTextNode(node)) {
     return node.text;
   } else if (isDescendent(node)) {

@@ -100,7 +100,7 @@ export function Outliner() {
       }}
     >
       <Header
-        title={searchExpanded ? "" : "Outliner"}
+        title={searchExpanded ? "" : "Outliner+"}
         action={
           <SearchField
             value={search}

@@ -18,7 +18,7 @@ export function CurveIcon({ item }: { item: Curve }) {
     path.delete();
 
     return [str, bounds.fLeft, bounds.fTop, bounds.fRight, bounds.fBottom];
-  }, [item.points, item.style.closed, item.style.tension]);
+  }, [item]);
 
   const width = Math.max(right - left, 1);
   const height = Math.max(bottom - top, 1);
@@ -52,7 +52,7 @@ export function CurveIcon({ item }: { item: Curve }) {
 // An adaption from https://github.com/konvajs/konva/blob/20a91feaa34f52c2328f7c2a20082ee7879266c9/src/shapes/Line.ts
 // To convert a Konva line into an SkPath
 
-export function curve(item: Curve, path: PathKit.SkPath) {
+function curve(item: Curve, path: PathKit.SkPath) {
   const points = convertPointsToNumbers(item.points);
   const length = points.length;
   const tension = item.style.tension;
@@ -118,8 +118,8 @@ function getTensionPoints(points: number[], tension: number, closed: boolean) {
 }
 
 function getTensionPointsClosed(p: number[], tension: number) {
-  let len = p.length,
-    firstControlPoints = getControlPoints(
+  const len = p.length;
+  const firstControlPoints = getControlPoints(
       p[len - 2],
       p[len - 1],
       p[0],
@@ -127,8 +127,8 @@ function getTensionPointsClosed(p: number[], tension: number) {
       p[2],
       p[3],
       tension
-    ),
-    lastControlPoints = getControlPoints(
+    );
+  const lastControlPoints = getControlPoints(
       p[len - 4],
       p[len - 3],
       p[len - 2],
@@ -136,22 +136,22 @@ function getTensionPointsClosed(p: number[], tension: number) {
       p[0],
       p[1],
       tension
-    ),
-    middle = expandPoints(p, tension),
-    tp = [firstControlPoints[2], firstControlPoints[3]]
-      .concat(middle)
-      .concat([
-        lastControlPoints[0],
-        lastControlPoints[1],
-        p[len - 2],
-        p[len - 1],
-        lastControlPoints[2],
-        lastControlPoints[3],
-        firstControlPoints[0],
-        firstControlPoints[1],
-        p[0],
-        p[1],
-      ]);
+    );
+  const middle = expandPoints(p, tension);
+  const tp = [firstControlPoints[2], firstControlPoints[3]]
+    .concat(middle)
+    .concat([
+      lastControlPoints[0],
+      lastControlPoints[1],
+      p[len - 2],
+      p[len - 1],
+      lastControlPoints[2],
+      lastControlPoints[3],
+      firstControlPoints[0],
+      firstControlPoints[1],
+      p[0],
+      p[1],
+    ]);
 
   return tp;
 }
@@ -165,26 +165,24 @@ function getControlPoints(
   y2: number,
   t: number
 ) {
-  var d01 = Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2)),
-    d12 = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)),
-    fa = (t * d01) / (d01 + d12),
-    fb = (t * d12) / (d01 + d12),
-    p1x = x1 - fa * (x2 - x0),
-    p1y = y1 - fa * (y2 - y0),
-    p2x = x1 + fb * (x2 - x0),
-    p2y = y1 + fb * (y2 - y0);
+  const d01 = Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2));
+  const d12 = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+  const fa = (t * d01) / (d01 + d12);
+  const fb = (t * d12) / (d01 + d12);
+  const p1x = x1 - fa * (x2 - x0);
+  const p1y = y1 - fa * (y2 - y0);
+  const p2x = x1 + fb * (x2 - x0);
+  const p2y = y1 + fb * (y2 - y0);
 
   return [p1x, p1y, p2x, p2y];
 }
 
 function expandPoints(p: number[], tension: number) {
-  var len = p.length,
-    allPoints = [],
-    n,
-    cp;
+  const len = p.length;
+  const allPoints: number[] = [];
 
-  for (n = 2; n < len - 2; n += 2) {
-    cp = getControlPoints(
+  for (let n = 2; n < len - 2; n += 2) {
+    const cp = getControlPoints(
       p[n - 2],
       p[n - 1],
       p[n],

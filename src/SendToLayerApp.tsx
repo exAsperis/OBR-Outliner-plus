@@ -3,12 +3,10 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Typography from "@mui/material/Typography";
 import OBR, { type Item } from "@owlbear-rodeo/sdk";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { SEND_TO_LAYER_POPOVER_ID } from "./constants";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LayerIcon } from "./LayerIcon";
 import { formatLayerName, getOutlinerLayers } from "./layers";
 import { getNextMenuIndex, type MenuNavigationKey } from "./menuNavigation";
-import { fitPopoverToViewport, type PopoverSize } from "./sendToLayerSizing";
 import { assignItems, readVirtualLayerState } from "./virtualLayerService";
 import {
   EMPTY_VIRTUAL_LAYER_STATE,
@@ -24,7 +22,6 @@ export function SendToLayerApp() {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const lastSize = useRef<PopoverSize>();
   const layers = useMemo(() => getOutlinerLayers(role), [role]);
 
   useEffect(() => {
@@ -45,33 +42,6 @@ export function SendToLayerApp() {
     return () => { active = false; };
   }, []);
 
-  useLayoutEffect(() => {
-    if (!loaded || !menuRef.current) return;
-    const menu = menuRef.current;
-    const resize = async () => {
-      const [viewportWidth, viewportHeight] = await Promise.all([
-        OBR.viewport.getWidth(),
-        OBR.viewport.getHeight(),
-      ]);
-      const size = fitPopoverToViewport(
-        menu.scrollWidth,
-        menu.scrollHeight,
-        viewportWidth,
-        viewportHeight,
-      );
-      if (lastSize.current?.width === size.width && lastSize.current.height === size.height) return;
-      lastSize.current = size;
-      await Promise.all([
-        OBR.popover.setWidth(SEND_TO_LAYER_POPOVER_ID, size.width),
-        OBR.popover.setHeight(SEND_TO_LAYER_POPOVER_ID, size.height),
-      ]);
-    };
-    const observer = new ResizeObserver(() => { void resize(); });
-    observer.observe(menu);
-    void resize();
-    return () => observer.disconnect();
-  }, [loaded, role, state, error]);
-
   useEffect(() => {
     if (!loaded) return;
     const buttons = [...(menuRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? [])];
@@ -90,7 +60,6 @@ export function SendToLayerApp() {
         return;
       }
       await assignItems(selection, virtualLayerId, destination);
-      await OBR.popover.close(SEND_TO_LAYER_POPOVER_ID);
     } catch {
       setError("Unable to move the selected items.");
       setBusy(false);
@@ -98,11 +67,6 @@ export function SendToLayerApp() {
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      void OBR.popover.close(SEND_TO_LAYER_POPOVER_ID);
-      return;
-    }
     const keys: MenuNavigationKey[] = ["ArrowDown", "ArrowUp", "Home", "End"];
     if (!keys.includes(event.key as MenuNavigationKey)) return;
     const buttons = [...(menuRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? [])];

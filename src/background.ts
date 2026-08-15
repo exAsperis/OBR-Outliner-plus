@@ -1,5 +1,5 @@
 import OBR from "@owlbear-rodeo/sdk";
-import { EXTENSION_ID, SEND_TO_LAYER_POPOVER_ID } from "./constants";
+import { EXTENSION_ID } from "./constants";
 import { stackItems } from "./stackItems";
 import type { StackOperation } from "./stacking";
 import { hasBoundaryViolation, stateFromMetadata } from "./virtualLayers";
@@ -98,21 +98,12 @@ OBR.onReady(async () => {
         filter: { permissions: ["UPDATE"] },
       },
     ],
-    onClick(_context, elementId) {
-      return OBR.popover.open({
-        id: SEND_TO_LAYER_POPOVER_ID,
-        url: new URL(
-          "/send-to-layer.html?v=0.4.1",
-          window.location.origin
-        ).href,
-        width: 184,
-        height: 64,
-        anchorElementId: elementId,
-        anchorReference: "ELEMENT",
-        anchorOrigin: { horizontal: "RIGHT", vertical: "TOP" },
-        transformOrigin: { horizontal: "LEFT", vertical: "TOP" },
-        marginThreshold: 8,
-      });
+    embed: {
+      url: new URL(
+        "/send-to-layer.html?v=0.4.1",
+        window.location.origin
+      ).href,
+      height: 384,
     },
   });
 });
@@ -127,7 +118,6 @@ window.addEventListener("beforeunload", () => {
     );
   }
   void OBR.contextMenu.remove(SEND_TO_LAYER_CONTEXT_MENU_ID);
-  void OBR.popover.close(SEND_TO_LAYER_POPOVER_ID);
   unsubscribeItems?.();
   unsubscribeMetadata?.();
 });

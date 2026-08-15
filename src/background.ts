@@ -11,22 +11,22 @@ const commands: Array<{
   {
     operation: "front",
     label: "Send to Front",
-    icon: "/send-to-front.svg?v=0.3.0",
+    icon: "/send-to-front.svg?v=0.3.1",
   },
   {
     operation: "forward",
     label: "Send Forward",
-    icon: "/send-forward.svg?v=0.3.0",
+    icon: "/send-forward.svg?v=0.3.1",
   },
   {
     operation: "backward",
     label: "Send Backward",
-    icon: "/send-backward.svg?v=0.3.0",
+    icon: "/send-backward.svg?v=0.3.1",
   },
   {
     operation: "back",
     label: "Send to Back",
-    icon: "/send-to-back.svg?v=0.3.0",
+    icon: "/send-to-back.svg?v=0.3.1",
   },
 ];
 
@@ -64,7 +64,7 @@ OBR.onReady(async () => {
     id: SEND_TO_LAYER_CONTEXT_MENU_ID,
     icons: [
       {
-        icon: "/send-to-layer.svg?v=0.3.0",
+        icon: "/send-to-layer.svg?v=0.3.1",
         label: "Send to Layer",
         filter: { permissions: ["UPDATE"] },
       },
@@ -72,10 +72,14 @@ OBR.onReady(async () => {
     onClick(_context, elementId) {
       return OBR.popover.open({
         id: SEND_TO_LAYER_POPOVER_ID,
-        url: "https://outliner-plus.ex-asperis.com/send-to-layer.html?v=0.3.0",
-        width: 220,
-        height: 420,
+        url: "https://outliner-plus.ex-asperis.com/send-to-layer.html?v=0.3.1",
+        width: 184,
+        height: 384,
         anchorElementId: elementId,
+        anchorReference: "ELEMENT",
+        anchorOrigin: { horizontal: "RIGHT", vertical: "TOP" },
+        transformOrigin: { horizontal: "LEFT", vertical: "TOP" },
+        marginThreshold: 8,
       });
     },
   });

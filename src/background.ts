@@ -106,7 +106,7 @@ OBR.onReady(async () => {
           window.location.origin
         ).href,
         width: 184,
-        height: 384,
+        height: 64,
         anchorElementId: elementId,
         anchorReference: "ELEMENT",
         anchorOrigin: { horizontal: "RIGHT", vertical: "TOP" },

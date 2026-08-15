@@ -1,8 +1,5 @@
 :root {
   color-scheme: light dark;
-  font-family: Roboto, system-ui, sans-serif;
-  color: var(--obr-text, #1f1f1f);
-  background: var(--obr-paper, #fff);
 }
 
 * {
@@ -12,63 +9,62 @@
 body {
   margin: 0;
   overflow: hidden;
+  background: transparent;
 }
 
-main {
-  padding: 4px;
+#root {
+  width: max-content;
+  min-width: 100%;
 }
 
-#layers {
-  display: flex;
-  max-height: 376px;
-  flex-direction: column;
-  overflow-y: auto;
+#menu-viewport {
+  max-width: 100vw;
+  max-height: 100vh;
+  overflow: auto;
   scrollbar-color: rgb(127 127 127 / 65%) transparent;
   scrollbar-width: thin;
 }
 
-#layers::-webkit-scrollbar {
+#menu-viewport::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
-#layers::-webkit-scrollbar-thumb {
+#menu-viewport::-webkit-scrollbar-thumb {
   border-radius: 3px;
   background: rgb(127 127 127 / 65%);
 }
 
-button {
-  min-height: 30px;
-  padding: 5px 10px;
-  border: 0;
+#layers {
+  width: max-content;
+  min-width: 100%;
+  padding: 4px;
+}
+
+#layers .MuiListItemButton-root {
+  min-height: 32px;
   border-radius: 6px;
-  color: inherit;
-  background: transparent;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
+  white-space: nowrap;
 }
 
-button:hover,
-button:focus-visible {
-  background: var(--obr-hover, rgb(127 127 127 / 18%));
-  outline: none;
+#layers .MuiListItemText-root {
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
-button:disabled {
-  cursor: wait;
-  opacity: 0.5;
+#layers .virtual-layer {
+  min-height: 30px;
+  padding-left: 48px;
 }
 
-.native-layer { font-weight: 600; }
-.virtual-layer { min-height: 26px; padding-left: 26px; font-size: 0.875rem; }
-.virtual-layer.unassigned { margin-bottom: 4px; border-bottom: 1px solid rgb(127 127 127 / 25%); font-style: italic; }
+#layers .virtual-layer.unassigned {
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgb(127 127 127 / 25%);
+  font-style: italic;
+}
 
 #status {
-  margin: 4px 8px;
-  color: var(--obr-error, #d32f2f);
-  font-size: 0.75rem;
-}
-
-#status:empty {
-  display: none;
+  display: block;
+  padding: 4px 12px 8px;
+  white-space: nowrap;
 }

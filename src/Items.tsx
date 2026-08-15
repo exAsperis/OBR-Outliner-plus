@@ -12,8 +12,7 @@ import { useOwlbearStore } from "./useOwlbearStore";
 import { UNASSIGNED_ID, orderedGroupIds, resolveGroupId, type VirtualLayerDefinition } from "./virtualLayers";
 import { addVirtualLayer, assignItems, moveStackingGroup, removeVirtualLayer, setGroupProperty, updateVirtualLayerName } from "./virtualLayerService";
 import { getVerticalDropPosition, type DropPosition } from "./dragPosition";
-
-const VALID_LAYERS = new Set<Item["layer"]>(["POINTER", "RULER", "TEXT", "NOTE", "ATTACHMENT", "CHARACTER", "MOUNT", "PROP", "DRAWING", "MAP"]);
+import { getOutlinerLayers } from "./layers";
 
 export function Items({ search }: { search: string }) {
   const items = useOwlbearStore((state) => state.items);
@@ -21,9 +20,10 @@ export function Items({ search }: { search: string }) {
   const role = useOwlbearStore((state) => state.role);
   const selection = useOwlbearStore((state) => state.selection);
   const searching = Boolean(search);
+  const availableLayers = useMemo(() => new Set(getOutlinerLayers(role)), [role]);
   const fuse = useMemo(() => new Fuse(items.map((item) => ({ id: item.id, name: item.name, layer: item.layer, type: item.type, text: isTextable(item) ? `${item.text.plainText} ${toPlainText(item.text.richText)}` : "", shape: isShape(item) ? item.shapeType : "" })), { keys: ["id", "name", "layer", "type", "text", "shape"], threshold: 0.25 }), [items]);
   const filtered = useMemo(() => search ? items.filter((item) => new Set(fuse.search(search).map((result) => result.item.id)).has(item.id)) : items, [fuse, items, search]);
-  const shown = useMemo(() => filtered.filter((item) => (VALID_LAYERS.has(item.layer) || (item.layer === "FOG" && role === "GM")) && !(!item.visible && role === "PLAYER")).sort((a, b) => b.zIndex - a.zIndex || a.id.localeCompare(b.id)), [filtered, role]);
+  const shown = useMemo(() => filtered.filter((item) => availableLayers.has(item.layer) && !(!item.visible && role === "PLAYER")).sort((a, b) => b.zIndex - a.zIndex || a.id.localeCompare(b.id)), [availableLayers, filtered, role]);
   const shownIds = shown.map((item) => item.id);
   const [dragId, setDragId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 3 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }), useSensor(KeyboardSensor));
@@ -131,7 +131,7 @@ export function Items({ search }: { search: string }) {
   }
 
   const shownLayers = useMemo(() => {
-    const base = [...VALID_LAYERS]; if (role === "GM") base.splice(1, 0, "FOG");
+    const base = getOutlinerLayers(role);
     return searching ? base.filter((layer) => shown.some((item) => item.layer === layer)) : base;
   }, [role, searching, shown]);
   const sortableIds = [...shownIds, ...virtualLayers.layers.map((entry) => `VL:${entry.id}`), ...shownLayers.map((layer) => `UG:${layer}`)];

@@ -12,7 +12,7 @@ export function App() {
     return <Outliner />;
   } else {
     return (
-      <Header title="Outliner" subtitle="Open a scene to use the outliner" />
+      <Header title="Outliner+" subtitle="Open a scene to use the outliner" />
     );
   }
 }

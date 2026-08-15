@@ -13,22 +13,62 @@ Run `npm run build` to create the production site in `dist`.
 
 ### Local Owlbear Rodeo testing
 
+Create `public/manifest-local.json` if it is missing. This file is intentionally
+ignored by Git so it cannot replace the production manifest accidentally:
+
+```json
+{
+  "name": "Outliner+ (Local)",
+  "version": "0.4.1-local",
+  "manifest_version": 1,
+  "author": "es Asperis",
+  "icon": "/logo.png",
+  "background_url": "/background.html",
+  "description": "Local development build of Outliner+",
+  "action": {
+    "title": "Outliner+ (Local)",
+    "icon": "/icon.svg",
+    "popover": "/",
+    "height": 129,
+    "width": 375
+  }
+}
+```
+
 Start the CORS-enabled development server on the fixed local port:
 
 ```sh
 npm run dev:obr
 ```
 
-Keep the server running, then add this development manifest to your Owlbear
-Rodeo profile and enable it in a room:
+If `npm` is not installed globally, use Codex's bundled Node runtime—the same
+command used by the original successful local test:
+
+```powershell
+& 'C:\Users\bryan\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe' .\node_modules\vite\bin\vite.js --host 127.0.0.1 --port 5173 --strictPort
+```
+
+Keep the server running. Open the following URL directly and confirm it displays
+JSON whose name is `Outliner+ (Local)`:
 
 ```text
 http://localhost:5173/manifest-local.json
 ```
 
-The local manifest is ignored by Git. Reload the Owlbear tab after changing the
-background page or manifest. Other source changes are served by Vite during
-development.
+Add that exact `localhost` URL to the Owlbear profile and enable `Outliner+
+(Local)` in a room. Do not substitute `127.0.0.1`, and do not use
+`/manifest.json`; the latter deliberately points to the production deployment.
+
+If Owlbear reports `Failed to fetch`:
+
+1. Confirm `npm run dev:obr` is still running and reports port `5173`.
+2. Verify the installed URL uses `localhost`, not `127.0.0.1`.
+3. Open the manifest URL directly. A connection error means Vite is not
+   reachable; valid JSON means the server and manifest are available.
+4. After changing the manifest, background page, or Vite configuration, restart
+   Vite, remove and re-add the local extension, and reload Owlbear.
+
+Other source changes are hot-reloaded by Vite during development.
 
 ## Features
 

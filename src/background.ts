@@ -13,22 +13,22 @@ const commands: Array<{
   {
     operation: "front",
     label: "Send to Front",
-    icon: "/send-to-front.svg?v=0.4.0",
+    icon: "/send-to-front.svg?v=0.4.1",
   },
   {
     operation: "forward",
     label: "Send Forward",
-    icon: "/send-forward.svg?v=0.4.0",
+    icon: "/send-forward.svg?v=0.4.1",
   },
   {
     operation: "backward",
     label: "Send Backward",
-    icon: "/send-backward.svg?v=0.4.0",
+    icon: "/send-backward.svg?v=0.4.1",
   },
   {
     operation: "back",
     label: "Send to Back",
-    icon: "/send-to-back.svg?v=0.4.0",
+    icon: "/send-to-back.svg?v=0.4.1",
   },
 ];
 
@@ -93,7 +93,7 @@ OBR.onReady(async () => {
     id: SEND_TO_LAYER_CONTEXT_MENU_ID,
     icons: [
       {
-        icon: "/send-to-layer.svg?v=0.4.0",
+        icon: "/send-to-layer.svg?v=0.4.1",
         label: "Send to Layer",
         filter: { permissions: ["UPDATE"] },
       },
@@ -102,7 +102,7 @@ OBR.onReady(async () => {
       return OBR.popover.open({
         id: SEND_TO_LAYER_POPOVER_ID,
         url: new URL(
-          "/send-to-layer.html?v=0.4.0",
+          "/send-to-layer.html?v=0.4.1",
           window.location.origin
         ).href,
         width: 184,

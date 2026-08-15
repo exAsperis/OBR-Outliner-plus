@@ -1,6 +1,6 @@
 import { DndContext, type DragEndEvent, type DragStartEvent, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import OBR, { type Item, Math2, type Vector2, isShape } from "@owlbear-rodeo/sdk";
+import OBR, { buildShape, type BoundingBox, type Item, Math2, type Vector2, isShape } from "@owlbear-rodeo/sdk";
 import Fuse from "fuse.js";
 import { useMemo, useState } from "react";
 import { ItemDragOverlay } from "./ItemDragOverlay";
@@ -39,13 +39,53 @@ export function Items({ search }: { search: string }) {
     if (next.length) await OBR.player.select(next); else await OBR.player.deselect();
   }
 
-  async function recenter(ids: string[]) {
-    const bounds = await OBR.scene.items.getItemBounds(ids);
+  async function recenterToBounds(bounds: BoundingBox) {
     const center = await OBR.viewport.transformPoint(bounds.center);
     const viewportCenter: Vector2 = { x: (await OBR.viewport.getWidth()) / 2, y: (await OBR.viewport.getHeight()) / 2 };
     const scale = await OBR.viewport.getScale();
     const position = Math2.multiply(await OBR.viewport.inverseTransformPoint(Math2.subtract(center, viewportCenter)), -scale);
     await OBR.viewport.animateTo({ scale, position });
+  }
+
+  async function recenter(ids: string[]) {
+    await recenterToBounds(await OBR.scene.items.getItemBounds(ids));
+  }
+
+  async function locate(item: Item) {
+    const bounds = await OBR.scene.items.getItemBounds([item.id]);
+    const highlight = buildShape()
+      .name("Locate highlight")
+      .position({ x: bounds.min.x - 30, y: bounds.min.y - 30 })
+      .width(bounds.width + 60)
+      .height(bounds.height + 60)
+      .shapeType("RECTANGLE")
+      .fillColor("#ff0080")
+      .fillOpacity(1)
+      .strokeOpacity(0)
+      .layer(item.layer)
+      .zIndex(item.zIndex - 1)
+      .disableAutoZIndex(true)
+      .disableHit(true)
+      .build();
+
+    await Promise.all([
+      recenterToBounds(bounds),
+      OBR.scene.local.addItems([highlight]),
+    ]);
+
+    const startedAt = performance.now();
+    try {
+      let opacity = 1;
+      while (opacity > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, 50));
+        opacity = Math.max(0, 1 - (performance.now() - startedAt) / 3000);
+        await OBR.scene.local.updateItems([highlight], (items) => {
+          items[0].style.fillOpacity = opacity;
+        });
+      }
+    } finally {
+      await OBR.scene.local.deleteItems([highlight.id]);
+    }
   }
 
   function promptCreate(layer: Item["layer"]) { const name = window.prompt("Virtual layer name"); if (name !== null) void addVirtualLayer(layer, name).catch((error: Error) => window.alert(error.message)); }
@@ -94,7 +134,7 @@ export function Items({ search }: { search: string }) {
   const sortableIds = [...shownIds, ...virtualLayers.layers.map((entry) => `VL:${entry.id}`), ...shownLayers.map((layer) => `UG:${layer}`)];
   return <DndContext onDragStart={dragStart} onDragEnd={dragEnd} onDragCancel={() => setDragId(null)} collisionDetection={closestCenter} sensors={sensors}>
     <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-      {shownLayers.map((layer) => <ItemList key={layer} layer={layer} role={role} searching={searching} items={shown.filter((item) => item.layer === layer)} definitions={virtualLayers.layers.filter((entry) => entry.obrLayer === layer)} groupOrder={orderedGroupIds(virtualLayers, layer)} resolveGroup={(item) => resolveGroupId(item, virtualLayers)} onCreate={() => promptCreate(layer)} onRename={promptRename} onDelete={confirmDelete} onGroupProperty={(ids, property, value) => void setGroupProperty(ids, property, value)} onItemSelect={select} onItemFocus={(item) => void recenter([...new Set([...(selection ?? []), item.id])])} onItemLocate={(item) => void recenter([item.id])} onItemStack={(item, operation: StackOperation) => void stackItems(items, [item.id], operation)} />)}
+      {shownLayers.map((layer) => <ItemList key={layer} layer={layer} role={role} searching={searching} items={shown.filter((item) => item.layer === layer)} definitions={virtualLayers.layers.filter((entry) => entry.obrLayer === layer)} groupOrder={orderedGroupIds(virtualLayers, layer)} resolveGroup={(item) => resolveGroupId(item, virtualLayers)} onCreate={() => promptCreate(layer)} onRename={promptRename} onDelete={confirmDelete} onGroupProperty={(ids, property, value) => void setGroupProperty(ids, property, value)} onItemSelect={select} onItemFocus={(item) => void recenter([...new Set([...(selection ?? []), item.id])])} onItemLocate={(item) => void locate(item)} onItemStack={(item, operation: StackOperation) => void stackItems(items, [item.id], operation)} />)}
       <ItemDragOverlay dragId={dragId} />
     </SortableContext>
   </DndContext>;

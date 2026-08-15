@@ -18,6 +18,8 @@ Run `npm run build` to create the production site in `dist`.
 - Send items to the front or back from the Outliner list.
 - Move selected canvas items forward, backward, to the front, or to the back
   within their current layers using Owlbear Rodeo's context menu.
+- Send selected canvas items to any Owlbear Rodeo layer from a top-to-bottom
+  layer menu.
 
 ## Azure Static Web Apps
 

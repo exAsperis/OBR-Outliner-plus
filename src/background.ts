@@ -1,5 +1,5 @@
 import OBR from "@owlbear-rodeo/sdk";
-import { EXTENSION_ID } from "./constants";
+import { EXTENSION_ID, SEND_TO_LAYER_POPOVER_ID } from "./constants";
 import { stackItems } from "./stackItems";
 import type { StackOperation } from "./stacking";
 
@@ -8,15 +8,29 @@ const commands: Array<{
   label: string;
   icon: string;
 }> = [
-  { operation: "front", label: "Send to Front", icon: "/send-to-front.svg" },
-  { operation: "forward", label: "Send Forward", icon: "/send-forward.svg" },
+  {
+    operation: "front",
+    label: "Send to Front",
+    icon: "/send-to-front.svg?v=0.3.0",
+  },
+  {
+    operation: "forward",
+    label: "Send Forward",
+    icon: "/send-forward.svg?v=0.3.0",
+  },
   {
     operation: "backward",
     label: "Send Backward",
-    icon: "/send-backward.svg",
+    icon: "/send-backward.svg?v=0.3.0",
   },
-  { operation: "back", label: "Send to Back", icon: "/send-to-back.svg" },
+  {
+    operation: "back",
+    label: "Send to Back",
+    icon: "/send-to-back.svg?v=0.3.0",
+  },
 ];
+
+const SEND_TO_LAYER_CONTEXT_MENU_ID = `${EXTENSION_ID}/send-to-layer`;
 
 let ready = false;
 
@@ -45,6 +59,26 @@ OBR.onReady(async () => {
       },
     });
   }
+
+  await OBR.contextMenu.create({
+    id: SEND_TO_LAYER_CONTEXT_MENU_ID,
+    icons: [
+      {
+        icon: "/send-to-layer.svg?v=0.3.0",
+        label: "Send to Layer",
+        filter: { permissions: ["UPDATE"] },
+      },
+    ],
+    onClick(_context, elementId) {
+      return OBR.popover.open({
+        id: SEND_TO_LAYER_POPOVER_ID,
+        url: "https://outliner-plus.ex-asperis.com/send-to-layer.html?v=0.3.0",
+        width: 220,
+        height: 420,
+        anchorElementId: elementId,
+      });
+    },
+  });
 });
 
 window.addEventListener("beforeunload", () => {
@@ -56,4 +90,6 @@ window.addEventListener("beforeunload", () => {
       `${EXTENSION_ID}/stack/${command.operation}`
     );
   }
+  void OBR.contextMenu.remove(SEND_TO_LAYER_CONTEXT_MENU_ID);
+  void OBR.popover.close(SEND_TO_LAYER_POPOVER_ID);
 });

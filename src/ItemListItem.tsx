@@ -294,7 +294,11 @@ export const ItemListItem = memo(function ({
           boxShadow: dragging ? theme.shadows[5] : undefined,
           color: dragging
             ? `${theme.palette.primary.contrastText} !important`
-            : undefined,
+            : selected
+              ? "primary.main"
+              : undefined,
+          borderLeft: "3px solid",
+          borderLeftColor: selected ? "primary.main" : "transparent",
           cursor: dragging ? "grabbing" : undefined,
         }}
         onClick={onClick}

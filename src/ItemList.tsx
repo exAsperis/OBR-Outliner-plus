@@ -23,6 +23,7 @@ import { LayerIcon } from "./LayerIcon";
 import { SortableItem } from "./SortableItem";
 import { capitalize } from "./helpers";
 import type { StackOperation } from "./stacking";
+import { useOwlbearStore } from "./useOwlbearStore";
 import { UNASSIGNED_ID, type VirtualLayerDefinition } from "./virtualLayers";
 
 const NATIVE_LAYER_HEADER_HEIGHT = 40;
@@ -48,6 +49,7 @@ interface Props {
 export function ItemList(props: Props) {
   const [open, setOpen] = useState(false);
   const { layer, definitions, items, groupOrder } = props;
+  const selected = useOwlbearStore((state) => items.some((item) => state.selection?.includes(item.id)));
   const layerName = `${capitalize(layer)}${layer !== "FOG" && layer !== "TEXT" ? "s" : ""}`;
   const layerHeading = `${layerName} [${items.length}]`;
   const renderItems = (groupItems: Item[]) => groupItems.map((item) => (
@@ -58,8 +60,8 @@ export function ItemList(props: Props) {
     </SortableItem>
   ));
   return <Box component="section" sx={{ position: "relative" }}>
-    <ListItemButton dense onClick={() => setOpen(!open)} divider aria-expanded={open} sx={{ position: "sticky", top: 0, zIndex: 3, minHeight: `${NATIVE_LAYER_HEADER_HEIGHT}px`, bgcolor: "background.paper" }}>
-      <ListItemIcon sx={{ color: "text.secondary", minWidth: "28px", "& svg": { fontSize: "1.25rem" } }}><LayerIcon layer={layer} /></ListItemIcon>
+    <ListItemButton dense onClick={() => setOpen(!open)} divider aria-expanded={open} sx={{ position: "sticky", top: 0, zIndex: 3, minHeight: `${NATIVE_LAYER_HEADER_HEIGHT}px`, bgcolor: "background.paper", color: selected ? "primary.main" : undefined, borderLeft: "3px solid", borderLeftColor: selected ? "primary.main" : "transparent" }}>
+      <ListItemIcon sx={{ color: selected ? "primary.main" : "text.secondary", minWidth: "28px", "& svg": { fontSize: "1.25rem" } }}><LayerIcon layer={layer} /></ListItemIcon>
       <ListItemText primary={layerHeading} sx={{ minWidth: 0 }} primaryTypographyProps={{ noWrap: true }} />
       {props.role === "GM" && !props.searching && <Tooltip title="Create virtual layer" placement="left" disableInteractive><IconButton size="small" aria-label={`Create virtual layer in ${layerName}`} onClick={(event) => { event.stopPropagation(); props.onCreate(); }}><AddIcon fontSize="small" /></IconButton></Tooltip>}
       {open ? <ExpandMore /> : <ChevronRight />}
@@ -79,13 +81,14 @@ export function ItemList(props: Props) {
 
 function Group({ definition, items, role, searching, onRename, onDelete, onGroupProperty, renderItems }: Props & { definition: VirtualLayerDefinition; renderItems: (items: Item[]) => React.ReactNode }) {
   const [open, setOpen] = useState(true);
+  const selected = useOwlbearStore((state) => items.some((item) => state.selection?.includes(item.id)));
   const unassigned = definition.id === UNASSIGNED_ID;
   const allVisible = items.length > 0 && items.every((item) => item.visible);
   const allLocked = items.length > 0 && items.every((item) => item.locked);
   const mixedVisible = items.some((item) => item.visible) && !allVisible;
   const mixedLocked = items.some((item) => item.locked) && !allLocked;
   const groupHeading = `${definition.name} [${items.length}]`;
-  const row = <ListItemButton dense onClick={() => setOpen(!open)} aria-expanded={open} sx={{ pl: 3, height: `${NATIVE_LAYER_HEADER_HEIGHT}px`, bgcolor: "background.paper" }}>
+  const row = <ListItemButton dense onClick={() => setOpen(!open)} aria-expanded={open} sx={{ pl: 3, height: `${NATIVE_LAYER_HEADER_HEIGHT}px`, bgcolor: "background.paper", color: selected ? "primary.main" : undefined, borderLeft: "3px solid", borderLeftColor: selected ? "primary.main" : "transparent" }}>
     {open ? <ExpandMore fontSize="small" /> : <ChevronRight fontSize="small" />}<ListItemText primary={groupHeading} sx={{ minWidth: 0 }} primaryTypographyProps={{ noWrap: true }} />
     {role === "GM" && <Stack direction="row" flexShrink={0}>
       {!unassigned && <><Tooltip title="Edit"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onRename(definition); }}><EditIcon fontSize="small" /></IconButton></Tooltip><Tooltip title="Delete"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(definition); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip></>}

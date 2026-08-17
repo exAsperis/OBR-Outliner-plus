@@ -14,7 +14,7 @@ import { useInView } from "react-intersection-observer";
 import Box from "@mui/material/Box";
 import Tooltip from "@mui/material/Tooltip";
 import { useOwlbearStore } from "./useOwlbearStore";
-import { memo, useMemo, useState } from "react";
+import { memo, useState } from "react";
 import useTheme from "@mui/material/styles/useTheme";
 import ListItem from "@mui/material/ListItem";
 import Stack from "@mui/material/Stack";
@@ -28,6 +28,23 @@ import { formatLayerName, getOutlinerLayers } from "./layers";
 import { LayerIcon } from "./LayerIcon";
 import { assignItems } from "./virtualLayerService";
 import { orderedGroupIds, UNASSIGNED_ID } from "./virtualLayers";
+import { getItemActionVisibility } from "./itemActionVisibility";
+
+const ACTION_SLOT_SIZE = 30;
+
+function EmptyActionSlot() {
+  return (
+    <Box
+      aria-hidden="true"
+      sx={{
+        width: `${ACTION_SLOT_SIZE}px`,
+        height: `${ACTION_SLOT_SIZE}px`,
+        flex: `0 0 ${ACTION_SLOT_SIZE}px`,
+        pointerEvents: "none",
+      }}
+    />
+  );
+}
 
 export const ItemListItem = memo(function ({
   item,
@@ -61,23 +78,17 @@ export const ItemListItem = memo(function ({
   const [moving, setMoving] = useState(false);
 
   const hasUpdatePermission = useItemHsaPermission(item, "UPDATE");
-  const showLocked = useMemo(() => {
-    return (
-      (item.locked || selected || hovering || focusWithin) &&
-      hasUpdatePermission
-    );
-  }, [item.locked, selected, hovering, focusWithin, hasUpdatePermission]);
-
-  const showVisible = useMemo(() => {
-    return (
-      (!item.visible || selected || hovering || focusWithin || showLocked) &&
-      role === "GM"
-    );
-  }, [item.visible, selected, hovering, focusWithin, showLocked, role]);
-
-  const showActions =
-    inView &&
-    (hovering || focusWithin || selected || item.locked || !item.visible || Boolean(layerMenuAnchor));
+  const actionVisibility = getItemActionVisibility({
+    selected,
+    hovering,
+    focusWithin,
+    layerMenuOpen: Boolean(layerMenuAnchor),
+    locked: item.locked,
+    visible: item.visible,
+    hasUpdatePermission,
+    isGm: role === "GM",
+  });
+  const showActions = inView && actionVisibility.showActionRow;
 
   function stopActionEvent(event: React.SyntheticEvent) {
     event.preventDefault();
@@ -111,9 +122,9 @@ export const ItemListItem = memo(function ({
         showActions ? (
           <Stack
             direction="row"
-            sx={{ opacity: !hovering && !focusWithin && !selected ? 0.5 : 1 }}
+            sx={{ opacity: actionVisibility.dimmed ? 0.5 : 1 }}
           >
-            <Tooltip title="Locate" disableInteractive>
+            {actionVisibility.showGeneralActions ? <Tooltip title="Locate" disableInteractive>
               <IconButton
                 aria-label="Locate"
                 size="small"
@@ -124,8 +135,8 @@ export const ItemListItem = memo(function ({
               >
                 <LocateIcon fontSize="small" />
               </IconButton>
-            </Tooltip>
-            {hasUpdatePermission && (
+            </Tooltip> : <EmptyActionSlot />}
+            {actionVisibility.showGeneralActions && hasUpdatePermission ? (
               <>
                 <Tooltip title="Send to Layer" disableInteractive>
                   <IconButton
@@ -176,8 +187,8 @@ export const ItemListItem = memo(function ({
                   })}
                 </Menu>
               </>
-            )}
-            {hasUpdatePermission && (
+            ) : <EmptyActionSlot />}
+            {actionVisibility.showGeneralActions && hasUpdatePermission ? (
               <Tooltip title="Send to Back" disableInteractive>
                 <IconButton
                   aria-label="Send to Back"
@@ -190,8 +201,8 @@ export const ItemListItem = memo(function ({
                   <SendToBackIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
-            )}
-            {hasUpdatePermission && (
+            ) : <EmptyActionSlot />}
+            {actionVisibility.showGeneralActions && hasUpdatePermission ? (
               <Tooltip title="Send to Front" disableInteractive>
                 <IconButton
                   aria-label="Send to Front"
@@ -204,8 +215,8 @@ export const ItemListItem = memo(function ({
                   <SendToFrontIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
-            )}
-            {showLocked && (
+            ) : <EmptyActionSlot />}
+            {actionVisibility.showLock ? (
               <Tooltip
                 title={item.locked ? "Unlock" : "Lock"}
                 disableInteractive
@@ -223,8 +234,8 @@ export const ItemListItem = memo(function ({
                   )}
                 </IconButton>
               </Tooltip>
-            )}
-            {showVisible && (
+            ) : <EmptyActionSlot />}
+            {actionVisibility.showVisibility ? (
               <Tooltip
                 title={
                   item.visible
@@ -258,7 +269,7 @@ export const ItemListItem = memo(function ({
                   )}
                 </IconButton>
               </Tooltip>
-            )}
+            ) : <EmptyActionSlot />}
           </Stack>
         ) : undefined
       }

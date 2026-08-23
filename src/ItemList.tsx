@@ -93,7 +93,7 @@ function Group({ definition, items, role, searching, groupDropPosition, onRename
   const unassigned = definition.id === UNASSIGNED_ID;
   const groupHeading = `${definition.name} [${items.length}]`;
   const row = <ListItemButton dense onClick={() => setOpen(!open)} aria-expanded={open} sx={{ pl: 3, height: `${NATIVE_LAYER_HEADER_HEIGHT}px`, bgcolor: "action.hover", "&:hover": { bgcolor: "action.selected" }, color: selected ? "primary.main" : undefined, borderLeft: "3px solid", borderLeftColor: selected ? "primary.main" : "transparent" }}>
-    <ListItemText primary={groupHeading} sx={{ minWidth: 0 }} primaryTypographyProps={{ noWrap: true }} />
+    <ListItemText primary={groupHeading} sx={{ minWidth: 0 }} primaryTypographyProps={{ noWrap: true, fontStyle: "italic" }} />
     {role === "GM" && <Stack direction="row" alignItems="center" flexShrink={0}>
       {!unassigned && <><Tooltip title="Edit"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onRename(definition); }}><EditIcon fontSize="small" /></IconButton></Tooltip><Tooltip title="Delete"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(definition); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip></>}
       <SendMenuButton itemIds={items.map((item) => item.id)} onStack={(operation) => onGroupStack(items.map((item) => item.id), operation)} confirmLayerMove={definition.name} />

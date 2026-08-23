@@ -7,6 +7,8 @@ import HiddenIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibleIcon from "@mui/icons-material/VisibilityRounded";
 import LockedIcon from "@mui/icons-material/LockRounded";
 import UnlockIcon from "@mui/icons-material/LockOpenRounded";
+import ClickableIcon from "@mui/icons-material/TouchAppRounded";
+import ClickThroughIcon from "@mui/icons-material/DoNotTouchRounded";
 import FogCutOnIcon from "./icons/other/FogCutOn";
 import FogCutOffIcon from "./icons/other/FogCutOff";
 import { useInView } from "react-intersection-observer";
@@ -75,6 +77,7 @@ export const ItemListItem = memo(function ({
     hovering,
     focusWithin,
     layerMenuOpen: sendMenuOpen,
+    disableHit: item.disableHit,
     locked: item.locked,
     visible: item.visible,
     hasUpdatePermission,
@@ -98,6 +101,12 @@ export const ItemListItem = memo(function ({
   function handleLockClick() {
     OBR.scene.items.updateItems([item], (items) => {
       items[0].locked = !item.locked;
+    });
+  }
+
+  function handleDisableHitClick() {
+    OBR.scene.items.updateItems([item], (items) => {
+      items[0].disableHit = !item.disableHit;
     });
   }
 
@@ -136,6 +145,25 @@ export const ItemListItem = memo(function ({
                   onOpenChange={setSendMenuOpen}
                 />
               </>
+            ) : <EmptyActionSlot />}
+            {actionVisibility.showDisableHit ? (
+              <Tooltip
+                title={item.disableHit ? "Enable clicks" : "Disable clicks"}
+                disableInteractive
+              >
+                <IconButton
+                  aria-label={item.disableHit ? "Enable clicks" : "Disable clicks"}
+                  size="small"
+                  onPointerDown={stopActionEvent}
+                  onClick={(event) => handleActionClick(event, handleDisableHitClick)}
+                >
+                  {item.disableHit ? (
+                    <ClickThroughIcon fontSize="small" />
+                  ) : (
+                    <ClickableIcon fontSize="small" />
+                  )}
+                </IconButton>
+              </Tooltip>
             ) : <EmptyActionSlot />}
             {actionVisibility.showLock ? (
               <Tooltip
@@ -212,7 +240,7 @@ export const ItemListItem = memo(function ({
       }}
       sx={{
         ".MuiListItemButton-root": {
-          pr: showActions ? "142px" : undefined,
+          pr: showActions ? "172px" : undefined,
         },
       }}
     >

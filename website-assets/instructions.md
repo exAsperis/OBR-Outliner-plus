@@ -1,6 +1,6 @@
 # Outliner+ for Owlbear Rodeo
 
-Browse, search, and organize Scene items by layer. Create virtual layers to keep foreground and background elements in a predictable stacking order, and use quick controls for visibility, locking, and item order.
+Browse, search, and organize Scene items by layer. Create virtual layers to keep foreground and background elements in a predictable stacking order, and use quick controls for click-through behavior, visibility, locking, and item order.
 
 ## Overview
 
@@ -30,6 +30,14 @@ Game Masters can use the controls in the Outliner+ panel to manage Scene items. 
 ### Create virtual layer
 
 Creates a virtual layer inside the selected Owlbear layer. Creating the first virtual layer also displays the Unassigned group, which can be reordered like a virtual layer.
+
+### Disable / Enable clicks
+
+Disabling clicks makes an item click-through on the map, allowing you to select and interact with items behind it. The item remains available in Outliner+, where you can enable clicks again.
+
+On an Owlbear-layer heading, the control affects every item in that Owlbear layer, including items assigned to virtual layers. On a virtual-layer heading, it affects every item assigned to that virtual layer. On an item row, it affects that item. The control appears immediately to the left of Lock at every level.
+
+A heading's glyph summarizes its contents: disabled clicks means every item is click-through, enabled clicks means every item can be clicked, and a gold glyph indicates a mixture of the two states. The control is disabled when the layer is empty.
 
 ### Lock / Unlock
 

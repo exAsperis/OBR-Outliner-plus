@@ -3,6 +3,7 @@ import DeleteIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditIcon from "@mui/icons-material/EditRounded";
 import LocateIcon from "@mui/icons-material/CenterFocusStrongRounded";
 import LockIcon from "@mui/icons-material/LockOpenRounded";
+import ClickThroughIcon from "@mui/icons-material/DoNotTouchRounded";
 import SendIcon from "@mui/icons-material/SendRounded";
 import VisibilityIcon from "@mui/icons-material/VisibilityRounded";
 import { useState, type ReactNode } from "react";
@@ -15,6 +16,7 @@ const INSTALL_URL = "https://outliner-plus.ex-asperis.com/manifest.json";
 
 const headingIcons: Record<string, ReactNode> = {
   "Create virtual layer": <AddIcon />,
+  "Disable / Enable clicks": <ClickThroughIcon />,
   "Lock / Unlock": <LockIcon />,
   "Show / Hide": <VisibilityIcon />,
   Send: <SendIcon />,

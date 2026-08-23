@@ -7,6 +7,7 @@ const defaults = {
   hovering: false,
   focusWithin: false,
   layerMenuOpen: false,
+  disableHit: false,
   locked: false,
   visible: true,
   hasUpdatePermission: true,
@@ -17,6 +18,7 @@ test("hides the action row for an ordinary item at rest", () => {
   assert.deepEqual(getItemActionVisibility(defaults), {
     showActionRow: false,
     showGeneralActions: false,
+    showDisableHit: false,
     showLock: false,
     showVisibility: false,
     dimmed: true,
@@ -30,6 +32,7 @@ for (const interaction of ["selected", "hovering", "focusWithin"] as const) {
       {
         showActionRow: true,
         showGeneralActions: true,
+        showDisableHit: true,
         showLock: true,
         showVisibility: true,
         dimmed: false,
@@ -44,6 +47,7 @@ test("shows only the dimmed Show control for a hidden item at rest", () => {
     {
       showActionRow: true,
       showGeneralActions: false,
+      showDisableHit: false,
       showLock: false,
       showVisibility: true,
       dimmed: true,
@@ -57,6 +61,7 @@ test("shows only the dimmed Unlock control for a locked item at rest", () => {
     {
       showActionRow: true,
       showGeneralActions: false,
+      showDisableHit: false,
       showLock: true,
       showVisibility: false,
       dimmed: true,
@@ -76,18 +81,34 @@ test("shows both state-reversing controls when hidden and locked", () => {
   assert.equal(result.dimmed, true);
 });
 
+test("shows only the dimmed Enable clicks control for a click-through item at rest", () => {
+  assert.deepEqual(
+    getItemActionVisibility({ ...defaults, disableHit: true }),
+    {
+      showActionRow: true,
+      showGeneralActions: false,
+      showDisableHit: true,
+      showLock: false,
+      showVisibility: false,
+      dimmed: true,
+    },
+  );
+});
+
 test("does not expose state controls without their permissions", () => {
   assert.deepEqual(
     getItemActionVisibility({
       ...defaults,
       locked: true,
       visible: false,
+      disableHit: true,
       hasUpdatePermission: false,
       isGm: false,
     }),
     {
       showActionRow: false,
       showGeneralActions: false,
+      showDisableHit: false,
       showLock: false,
       showVisibility: false,
       dimmed: true,

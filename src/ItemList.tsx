@@ -5,6 +5,8 @@ import HiddenIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibleIcon from "@mui/icons-material/VisibilityRounded";
 import LockedIcon from "@mui/icons-material/LockRounded";
 import UnlockIcon from "@mui/icons-material/LockOpenRounded";
+import ClickableIcon from "@mui/icons-material/TouchAppRounded";
+import ClickThroughIcon from "@mui/icons-material/DoNotTouchRounded";
 import FogCutOnIcon from "./icons/other/FogCutOn";
 import FogCutOffIcon from "./icons/other/FogCutOff";
 import Collapse from "@mui/material/Collapse";
@@ -43,7 +45,7 @@ interface Props {
   onCreate: () => void;
   onRename: (definition: VirtualLayerDefinition) => void;
   onDelete: (definition: VirtualLayerDefinition) => void;
-  onGroupProperty: (ids: string[], property: "visible" | "locked", value: boolean) => void;
+  onGroupProperty: (ids: string[], property: "visible" | "locked" | "disableHit", value: boolean) => void;
   resolveGroup: (item: Item) => string;
   onItemSelect: (item: Item, event: React.MouseEvent<HTMLDivElement>) => void;
   onItemFocus: (item: Item) => void;
@@ -107,12 +109,13 @@ function Group({ definition, items, role, searching, groupDropPosition, onRename
 }
 
 function LayerPropertyControls({ items, onGroupProperty, fog = false }: { items: Item[]; onGroupProperty: Props["onGroupProperty"]; fog?: boolean }) {
-  const { hasItems, allLocked, allVisible, mixedLocked, mixedVisible } = getLayerPropertyState(items);
+  const { hasItems, allDisableHit, allLocked, allVisible, mixedDisableHit, mixedLocked, mixedVisible } = getLayerPropertyState(items);
   const ids = items.map((item) => item.id);
   const visibilityAction = fog
     ? allVisible ? "Cut all" : "Uncut all"
     : allVisible ? "Hide all" : "Show all";
   return <>
+    <Tooltip title={allDisableHit ? "Enable clicks for all" : "Disable clicks for all"}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" aria-label={allDisableHit ? "Enable clicks for all" : "Disable clicks for all"} color={mixedDisableHit ? "warning" : "default"} disabled={!hasItems} onClick={(event) => { event.stopPropagation(); onGroupProperty(ids, "disableHit", !allDisableHit); }}>{allDisableHit ? <ClickThroughIcon fontSize="small" /> : <ClickableIcon fontSize="small" />}</IconButton></Box></Tooltip>
     <Tooltip title={allLocked ? "Unlock all" : "Lock all"}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" color={mixedLocked ? "warning" : "default"} disabled={!hasItems} onClick={(event) => { event.stopPropagation(); onGroupProperty(ids, "locked", !allLocked); }}>{allLocked ? <LockedIcon fontSize="small" /> : <UnlockIcon fontSize="small" />}</IconButton></Box></Tooltip>
     <Tooltip title={visibilityAction}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" color={mixedVisible ? "warning" : "default"} disabled={!hasItems} onClick={(event) => { event.stopPropagation(); onGroupProperty(ids, "visible", !allVisible); }}>{fog ? allVisible ? <FogCutOffIcon fontSize="small" /> : <FogCutOnIcon fontSize="small" /> : allVisible ? <VisibleIcon fontSize="small" /> : <HiddenIcon fontSize="small" />}</IconButton></Box></Tooltip>
   </>;

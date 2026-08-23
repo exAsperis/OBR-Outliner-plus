@@ -174,7 +174,7 @@ export async function readVirtualLayerState() {
   return parseVirtualLayerState((await OBR.scene.getMetadata())[VIRTUAL_LAYERS_METADATA_KEY]);
 }
 
-export function setGroupProperty(itemIds: string[], property: "visible" | "locked", value: boolean) {
+export function setGroupProperty(itemIds: string[], property: "visible" | "locked" | "disableHit", value: boolean) {
   return OBR.scene.items.updateItems(itemIds, (items) => {
     for (const item of items) item[property] = value;
   });

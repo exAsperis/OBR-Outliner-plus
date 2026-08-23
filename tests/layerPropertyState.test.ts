@@ -5,8 +5,10 @@ import { getLayerPropertyState } from "../src/layerPropertyState.ts";
 test("disables aggregate properties for an empty layer", () => {
   assert.deepEqual(getLayerPropertyState([]), {
     hasItems: false,
+    allDisableHit: false,
     allLocked: false,
     allVisible: false,
+    mixedDisableHit: false,
     mixedLocked: false,
     mixedVisible: false,
   });
@@ -14,12 +16,14 @@ test("disables aggregate properties for an empty layer", () => {
 
 test("reports uniform layer properties", () => {
   assert.deepEqual(getLayerPropertyState([
-    { locked: true, visible: true },
-    { locked: true, visible: true },
+    { disableHit: true, locked: true, visible: true },
+    { disableHit: true, locked: true, visible: true },
   ]), {
     hasItems: true,
+    allDisableHit: true,
     allLocked: true,
     allVisible: true,
+    mixedDisableHit: false,
     mixedLocked: false,
     mixedVisible: false,
   });
@@ -27,12 +31,14 @@ test("reports uniform layer properties", () => {
 
 test("reports mixed layer properties", () => {
   assert.deepEqual(getLayerPropertyState([
-    { locked: true, visible: false },
+    { disableHit: true, locked: true, visible: false },
     { locked: false, visible: true },
   ]), {
     hasItems: true,
+    allDisableHit: false,
     allLocked: false,
     allVisible: false,
+    mixedDisableHit: true,
     mixedLocked: true,
     mixedVisible: true,
   });

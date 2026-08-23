@@ -7,6 +7,7 @@ const defaults = {
   hovering: false,
   focusWithin: false,
   layerMenuOpen: false,
+  inheritanceActive: false,
   disableHit: false,
   locked: false,
   visible: true,
@@ -18,6 +19,7 @@ test("hides the action row for an ordinary item at rest", () => {
   assert.deepEqual(getItemActionVisibility(defaults), {
     showActionRow: false,
     showGeneralActions: false,
+    showInheritance: false,
     showDisableHit: false,
     showLock: false,
     showVisibility: false,
@@ -32,6 +34,7 @@ for (const interaction of ["selected", "hovering", "focusWithin"] as const) {
       {
         showActionRow: true,
         showGeneralActions: true,
+        showInheritance: true,
         showDisableHit: true,
         showLock: true,
         showVisibility: true,
@@ -47,6 +50,7 @@ test("shows only the dimmed Show control for a hidden item at rest", () => {
     {
       showActionRow: true,
       showGeneralActions: false,
+      showInheritance: false,
       showDisableHit: false,
       showLock: false,
       showVisibility: true,
@@ -61,6 +65,7 @@ test("shows only the dimmed Unlock control for a locked item at rest", () => {
     {
       showActionRow: true,
       showGeneralActions: false,
+      showInheritance: false,
       showDisableHit: false,
       showLock: true,
       showVisibility: false,
@@ -87,6 +92,7 @@ test("shows only the dimmed Enable clicks control for a click-through item at re
     {
       showActionRow: true,
       showGeneralActions: false,
+      showInheritance: false,
       showDisableHit: true,
       showLock: false,
       showVisibility: false,
@@ -108,6 +114,7 @@ test("does not expose state controls without their permissions", () => {
     {
       showActionRow: false,
       showGeneralActions: false,
+      showInheritance: false,
       showDisableHit: false,
       showLock: false,
       showVisibility: false,
@@ -121,4 +128,16 @@ test("keeps general actions mounted while the layer menu is open", () => {
   assert.equal(result.showActionRow, true);
   assert.equal(result.showGeneralActions, true);
   assert.equal(result.dimmed, true);
+});
+
+test("keeps all inherited controls mounted at rest", () => {
+  assert.deepEqual(getItemActionVisibility({ ...defaults, inheritanceActive: true }), {
+    showActionRow: true,
+    showGeneralActions: false,
+    showInheritance: true,
+    showDisableHit: true,
+    showLock: true,
+    showVisibility: true,
+    dimmed: true,
+  });
 });

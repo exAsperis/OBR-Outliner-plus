@@ -7,6 +7,7 @@ import LockedIcon from "@mui/icons-material/LockRounded";
 import UnlockIcon from "@mui/icons-material/LockOpenRounded";
 import ClickableIcon from "@mui/icons-material/TouchAppRounded";
 import ClickThroughIcon from "@mui/icons-material/DoNotTouchRounded";
+import InheritanceIcon from "@mui/icons-material/AccountTreeRounded";
 import FogCutOnIcon from "./icons/other/FogCutOn";
 import FogCutOffIcon from "./icons/other/FogCutOff";
 import Collapse from "@mui/material/Collapse";
@@ -26,10 +27,12 @@ import { SortableItem } from "./SortableItem";
 import { capitalize } from "./helpers";
 import type { StackOperation } from "./stacking";
 import { useOwlbearStore } from "./useOwlbearStore";
-import { UNASSIGNED_ID, type VirtualLayerDefinition } from "./virtualLayers";
+import { resolveGroupId, UNASSIGNED_ID, type VirtualLayerDefinition } from "./virtualLayers";
 import type { DropPosition } from "./dragPosition";
 import { SendMenuButton } from "./SendMenuButton";
 import { getLayerPropertyState } from "./layerPropertyState";
+import { captureAggregateState, getGroupRule, getItemRule, getNativeRule, inheritanceLabel, type StatefulProperty } from "./stateInheritance";
+import { setGroupProperty, setScopeInheritedProperty, toggleScopeInheritance, type RuleScope } from "./virtualLayerService";
 
 const NATIVE_LAYER_HEADER_HEIGHT = 40;
 
@@ -45,7 +48,6 @@ interface Props {
   onCreate: () => void;
   onRename: (definition: VirtualLayerDefinition) => void;
   onDelete: (definition: VirtualLayerDefinition) => void;
-  onGroupProperty: (ids: string[], property: "visible" | "locked" | "disableHit", value: boolean) => void;
   resolveGroup: (item: Item) => string;
   onItemSelect: (item: Item, event: React.MouseEvent<HTMLDivElement>) => void;
   onItemFocus: (item: Item) => void;
@@ -73,7 +75,7 @@ export function ItemList(props: Props) {
       <ListItemText primary={layerHeading} sx={{ minWidth: 0 }} primaryTypographyProps={{ noWrap: true }} />
       {props.role === "GM" && <Stack direction="row" alignItems="center" flexShrink={0}>
         {!props.searching && <Tooltip title="Create virtual layer" placement="left" disableInteractive><IconButton size="small" aria-label={`Create virtual layer in ${layerName}`} onClick={(event) => { event.stopPropagation(); props.onCreate(); }}><AddIcon fontSize="small" /></IconButton></Tooltip>}
-        <LayerPropertyControls items={nativeItems} onGroupProperty={props.onGroupProperty} fog={layer === "FOG"} />
+        <LayerPropertyControls items={nativeItems} scope={{ kind: "native", layer }} fog={layer === "FOG"} />
       </Stack>}
     </ListItemButton>
     <Collapse in={open} unmountOnExit><List component="div" dense disablePadding>
@@ -89,7 +91,7 @@ export function ItemList(props: Props) {
   </Box>;
 }
 
-function Group({ definition, items, role, searching, groupDropPosition, onRename, onDelete, onGroupProperty, onGroupStack, renderItems }: Props & { definition: VirtualLayerDefinition; renderItems: (items: Item[]) => React.ReactNode }) {
+function Group({ definition, items, role, searching, groupDropPosition, onRename, onDelete, onGroupStack, renderItems }: Props & { definition: VirtualLayerDefinition; renderItems: (items: Item[]) => React.ReactNode }) {
   const [open, setOpen] = useState(true);
   const selected = useOwlbearStore((state) => items.some((item) => state.selection?.includes(item.id)));
   const unassigned = definition.id === UNASSIGNED_ID;
@@ -99,7 +101,7 @@ function Group({ definition, items, role, searching, groupDropPosition, onRename
     {role === "GM" && <Stack direction="row" alignItems="center" flexShrink={0}>
       {!unassigned && <><Tooltip title="Edit"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onRename(definition); }}><EditIcon fontSize="small" /></IconButton></Tooltip><Tooltip title="Delete"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(definition); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip></>}
       <SendMenuButton itemIds={items.map((item) => item.id)} allowStackWhenEmpty onStack={(operation) => onGroupStack(definition.obrLayer, definition.id, operation)} confirmLayerMove={definition.name} />
-      <LayerPropertyControls items={items} onGroupProperty={onGroupProperty} />
+      <LayerPropertyControls items={items} scope={{ kind: "group", layer: definition.obrLayer, groupId: definition.id }} fog={definition.obrLayer === "FOG"} />
     </Stack>}
   </ListItemButton>;
   return <>
@@ -108,15 +110,35 @@ function Group({ definition, items, role, searching, groupDropPosition, onRename
   </>;
 }
 
-function LayerPropertyControls({ items, onGroupProperty, fog = false }: { items: Item[]; onGroupProperty: Props["onGroupProperty"]; fog?: boolean }) {
-  const { hasItems, allDisableHit, allLocked, allVisible, mixedDisableHit, mixedLocked, mixedVisible } = getLayerPropertyState(items);
-  const ids = items.map((item) => item.id);
+function LayerPropertyControls({ items, scope, fog = false }: { items: Item[]; scope: RuleScope; fog?: boolean }) {
+  const state = useOwlbearStore((store) => store.virtualLayers);
+  const localRule = scope.kind === "native" ? getNativeRule(state, scope.layer) : getGroupRule(state, scope.layer, scope.groupId);
+  const parentRule = scope.kind === "group" ? getNativeRule(state, scope.layer) : undefined;
+  const effectiveRule = localRule ?? parentRule;
+  const inheritedOnly = Boolean(parentRule && !localRule);
+  const eligible = items.filter((item) => {
+    if (getItemRule(item)) return false;
+    return scope.kind === "group" || !getGroupRule(state, item.layer, resolveGroupId(item, state));
+  });
+  const aggregate = getLayerPropertyState(eligible);
+  const { mixedDisableHit, mixedLocked, mixedVisible } = aggregate;
+  const displayed = effectiveRule ?? captureAggregateState(eligible);
+  const hasTargets = Boolean(effectiveRule) || eligible.length > 0;
   const visibilityAction = fog
-    ? allVisible ? "Cut all" : "Uncut all"
-    : allVisible ? "Hide all" : "Show all";
+    ? displayed.visible ? "Cut all" : "Uncut all"
+    : displayed.visible ? "Hide all" : "Show all";
+  const inheritanceColor = localRule && parentRule ? "error" : effectiveRule ? "warning" : "default";
+  const stateColor = (property: StatefulProperty, mixed: boolean) => localRule && parentRule && localRule[property] !== parentRule[property]
+    ? "error" : effectiveRule ? "warning" : mixed ? "info" : "default";
+  const disabled = inheritedOnly || !hasTargets;
+  const disabledSx = inheritedOnly ? { "&.Mui-disabled": { color: "warning.main" } } : undefined;
+  const setProperty = (property: StatefulProperty, value: boolean) => localRule
+    ? setScopeInheritedProperty(scope, property, value)
+    : setGroupProperty(eligible.map((item) => item.id), property, value);
   return <>
-    <Tooltip title={allDisableHit ? "Enable clicks for all" : "Disable clicks for all"}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" aria-label={allDisableHit ? "Enable clicks for all" : "Disable clicks for all"} color={mixedDisableHit ? "warning" : "default"} disabled={!hasItems} onClick={(event) => { event.stopPropagation(); onGroupProperty(ids, "disableHit", !allDisableHit); }}>{allDisableHit ? <ClickThroughIcon fontSize="small" /> : <ClickableIcon fontSize="small" />}</IconButton></Box></Tooltip>
-    <Tooltip title={allLocked ? "Unlock all" : "Lock all"}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" color={mixedLocked ? "warning" : "default"} disabled={!hasItems} onClick={(event) => { event.stopPropagation(); onGroupProperty(ids, "locked", !allLocked); }}>{allLocked ? <LockedIcon fontSize="small" /> : <UnlockIcon fontSize="small" />}</IconButton></Box></Tooltip>
-    <Tooltip title={visibilityAction}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" color={mixedVisible ? "warning" : "default"} disabled={!hasItems} onClick={(event) => { event.stopPropagation(); onGroupProperty(ids, "visible", !allVisible); }}>{fog ? allVisible ? <FogCutOffIcon fontSize="small" /> : <FogCutOnIcon fontSize="small" /> : allVisible ? <VisibleIcon fontSize="small" /> : <HiddenIcon fontSize="small" />}</IconButton></Box></Tooltip>
+    <Tooltip title={inheritanceLabel(Boolean(localRule), Boolean(parentRule))}><IconButton size="small" aria-label={inheritanceLabel(Boolean(localRule), Boolean(parentRule))} color={inheritanceColor} onClick={(event) => { event.stopPropagation(); void toggleScopeInheritance(scope, parentRule ?? captureAggregateState(eligible)); }}><InheritanceIcon fontSize="small" /></IconButton></Tooltip>
+    <Tooltip title={displayed.disableHit ? "Enable clicks for all" : "Disable clicks for all"}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" aria-label={displayed.disableHit ? "Enable clicks for all" : "Disable clicks for all"} color={stateColor("disableHit", mixedDisableHit)} disabled={disabled} sx={disabledSx} onClick={(event) => { event.stopPropagation(); void setProperty("disableHit", !displayed.disableHit); }}>{displayed.disableHit ? <ClickThroughIcon fontSize="small" /> : <ClickableIcon fontSize="small" />}</IconButton></Box></Tooltip>
+    <Tooltip title={displayed.locked ? "Unlock all" : "Lock all"}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" color={stateColor("locked", mixedLocked)} disabled={disabled} sx={disabledSx} onClick={(event) => { event.stopPropagation(); void setProperty("locked", !displayed.locked); }}>{displayed.locked ? <LockedIcon fontSize="small" /> : <UnlockIcon fontSize="small" />}</IconButton></Box></Tooltip>
+    <Tooltip title={visibilityAction}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" color={stateColor("visible", mixedVisible)} disabled={disabled} sx={disabledSx} onClick={(event) => { event.stopPropagation(); void setProperty("visible", !displayed.visible); }}>{fog ? displayed.visible ? <FogCutOffIcon fontSize="small" /> : <FogCutOnIcon fontSize="small" /> : displayed.visible ? <VisibleIcon fontSize="small" /> : <HiddenIcon fontSize="small" />}</IconButton></Box></Tooltip>
   </>;
 }

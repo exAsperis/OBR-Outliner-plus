@@ -1,27 +1,34 @@
 import OBR from "@owlbear-rodeo/sdk";
 import { EXTENSION_ID } from "./constants";
 import { hasBoundaryViolation, stateFromMetadata } from "./virtualLayers";
-import { isVirtualLayerWriteInFlight, normalizeLayers } from "./virtualLayerService";
+import { enforceStateInheritance, isVirtualLayerWriteInFlight, normalizeLayers } from "./virtualLayerService";
 
 const SEND_CONTEXT_MENU_ID = `${EXTENSION_ID}/send`;
 
 let ready = false;
 let unsubscribeItems: (() => void) | undefined;
 let unsubscribeMetadata: (() => void) | undefined;
-let reconcileQueued = false;
+let reconciling = false;
+let reconcilePending = false;
 
 async function reconcile() {
-  if (reconcileQueued || isVirtualLayerWriteInFlight() || !(await OBR.scene.isReady())) return;
-  if ((await OBR.player.getRole()) !== "GM") return;
-  reconcileQueued = true;
+  if (reconciling) {
+    reconcilePending = true;
+    return;
+  }
+  reconciling = true;
   try {
-    const state = stateFromMetadata(await OBR.scene.getMetadata());
-    if (!state.layers.length) return;
-    const items = await OBR.scene.items.getItems();
-    const layers = [...new Set(state.layers.map((entry) => entry.obrLayer))]
-      .filter((layer) => hasBoundaryViolation(items, state, layer));
-    if (layers.length) await normalizeLayers(layers, state);
-  } finally { reconcileQueued = false; }
+    do {
+      reconcilePending = false;
+      if (isVirtualLayerWriteInFlight() || !(await OBR.scene.isReady()) || (await OBR.player.getRole()) !== "GM") continue;
+      const state = stateFromMetadata(await OBR.scene.getMetadata());
+      const items = await OBR.scene.items.getItems();
+      const layers = [...new Set(state.layers.map((entry) => entry.obrLayer))]
+        .filter((layer) => hasBoundaryViolation(items, state, layer));
+      if (layers.length) await normalizeLayers(layers, state);
+      await enforceStateInheritance(state);
+    } while (reconcilePending);
+  } finally { reconciling = false; }
 }
 
 async function startReconciliation() {
@@ -40,14 +47,14 @@ OBR.onReady(async () => {
     id: SEND_CONTEXT_MENU_ID,
     icons: [
       {
-        icon: "/send.svg?v=0.4.3",
+        icon: `/send.svg?v=${import.meta.env.VITE_RELEASE_VERSION}`,
         label: "Send…",
         filter: { permissions: ["UPDATE"] },
       },
     ],
     embed: {
       url: new URL(
-        "/send-menu.html?v=0.4.3",
+        `/send-menu.html?v=${import.meta.env.VITE_RELEASE_VERSION}`,
         window.location.origin
       ).href,
       height: 168,

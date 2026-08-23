@@ -1,5 +1,6 @@
 import OBR, { type Item } from "@owlbear-rodeo/sdk";
 import {
+  ITEM_INHERITANCE_METADATA_KEY,
   VIRTUAL_LAYER_METADATA_KEY,
   VIRTUAL_LAYERS_METADATA_KEY,
 } from "./constants";
@@ -20,6 +21,16 @@ import {
   stateFromMetadata,
   type VirtualLayerState,
 } from "./virtualLayers";
+import {
+  calculateInheritanceUpdates,
+  getGroupRule,
+  getItemParentRule,
+  getItemRule,
+  getNativeRule,
+  itemState,
+  type StatefulProperty,
+} from "./stateInheritance";
+import type { InheritedItemState } from "./virtualLayers";
 
 let queue: Promise<void> = Promise.resolve();
 let writing = false;
@@ -90,6 +101,99 @@ export function moveStackingGroup(obrLayer: Item["layer"], id: string, targetInd
   });
 }
 
+export async function enforceStateInheritance(state?: VirtualLayerState) {
+  const currentState = state ?? await getState();
+  const items = await OBR.scene.items.getItems();
+  const updates = calculateInheritanceUpdates(items, currentState);
+  if (updates.size) await OBR.scene.items.updateItems([...updates.keys()], (draft) => {
+    for (const item of draft) {
+      const rule = updates.get(item.id);
+      if (!rule) continue;
+      item.disableHit = rule.disableHit;
+      item.locked = rule.locked;
+      item.visible = rule.visible;
+    }
+  });
+}
+
+export type RuleScope = { kind: "native"; layer: Item["layer"] } | { kind: "group"; layer: Item["layer"]; groupId: string };
+
+function localRule(state: VirtualLayerState, scope: RuleScope) {
+  return scope.kind === "native" ? getNativeRule(state, scope.layer) : getGroupRule(state, scope.layer, scope.groupId);
+}
+
+function parentRule(state: VirtualLayerState, scope: RuleScope) {
+  return scope.kind === "group" ? getNativeRule(state, scope.layer) : undefined;
+}
+
+function withRule(state: VirtualLayerState, scope: RuleScope, rule?: InheritedItemState): VirtualLayerState {
+  const inheritance = { ...state.inheritance };
+  if (scope.kind === "native") {
+    const native = { ...inheritance.native };
+    if (rule) native[scope.layer] = rule; else delete native[scope.layer];
+    if (Object.keys(native).length) inheritance.native = native; else delete inheritance.native;
+  } else if (scope.groupId === "__unassigned__") {
+    const unassigned = { ...inheritance.unassigned };
+    if (rule) unassigned[scope.layer] = rule; else delete unassigned[scope.layer];
+    if (Object.keys(unassigned).length) inheritance.unassigned = unassigned; else delete inheritance.unassigned;
+  } else {
+    const virtual = { ...inheritance.virtual };
+    if (rule) virtual[scope.groupId] = rule; else delete virtual[scope.groupId];
+    if (Object.keys(virtual).length) inheritance.virtual = virtual; else delete inheritance.virtual;
+  }
+  return { ...state, inheritance: inheritance.native || inheritance.virtual || inheritance.unassigned ? inheritance : undefined };
+}
+
+export function toggleScopeInheritance(scope: RuleScope, fallback: InheritedItemState) {
+  return serialized(async () => {
+    const state = await getState();
+    const next = withRule(state, scope, localRule(state, scope) ? undefined : parentRule(state, scope) ?? fallback);
+    await setState(next);
+    await enforceStateInheritance(next);
+  });
+}
+
+export function setScopeInheritedProperty(scope: RuleScope, property: StatefulProperty, value: boolean) {
+  return serialized(async () => {
+    const state = await getState();
+    const current = localRule(state, scope);
+    if (!current) return;
+    const next = withRule(state, scope, { ...current, [property]: value });
+    await setState(next);
+    await enforceStateInheritance(next);
+  });
+}
+
+export function toggleItemInheritance(item: Item) {
+  return serialized(async () => {
+    const state = await getState();
+    const local = getItemRule(item);
+    const parent = getItemParentRule(item, state);
+    const next = parent ?? itemState(item);
+    await OBR.scene.items.updateItems([item.id], (draft) => {
+      const target = draft[0];
+      if (local) delete target.metadata[ITEM_INHERITANCE_METADATA_KEY];
+      else target.metadata[ITEM_INHERITANCE_METADATA_KEY] = next;
+      if (local && !parent) return;
+      target.disableHit = next.disableHit;
+      target.locked = next.locked;
+      target.visible = next.visible;
+    });
+  });
+}
+
+export function setItemInheritedProperty(item: Item, property: StatefulProperty, value: boolean) {
+  return serialized(async () => {
+    const local = getItemRule(item);
+    if (!local) return;
+    const next = { ...local, [property]: value };
+    await OBR.scene.items.updateItems([item.id], (draft) => {
+      draft[0].metadata[ITEM_INHERITANCE_METADATA_KEY] = next;
+      draft[0][property] = value;
+    });
+  });
+}
+
 export function stackVirtualLayer(obrLayer: Item["layer"], id: string, operation: StackOperation) {
   return serialized(async () => {
     const state = await getState();
@@ -154,6 +258,7 @@ export function assignItems(itemIds: string[], virtualLayerId?: string, nativeLa
       refreshed = await OBR.scene.items.getItems();
     }
     await normalizeLayers(affectedLayers, state);
+    await enforceStateInheritance(state);
   });
 }
 

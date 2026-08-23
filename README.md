@@ -81,8 +81,10 @@ Other source changes are hot-reloaded by Vite during development.
   layer menu.
 - Create scene-specific virtual layers inside native Owlbear layers, with strict
   stacking boundaries and independent item ordering.
-- Rename, reorder, hide, lock, and delete virtual layers without changing or
-  deleting their objects.
+- Rename, reorder, hide, lock, make click-through, and delete virtual layers
+  without changing or deleting their objects.
+- Cascade click-through, locked, and visibility states from native layers
+  through virtual layers to individual item overrides.
 - Drag items between virtual layers or use the canvas Send to Layer menu for
   virtual-layer-aware multi-selection moves.
 
@@ -91,6 +93,11 @@ Other source changes are hot-reloaded by Vite during development.
 The included GitHub Actions workflow deploys the Vite build from `main`. Add the
 Azure deployment token to the GitHub repository as the
 `AZURE_STATIC_WEB_APPS_API_TOKEN` Actions secret before running the workflow.
+
+Pushes to `beta` deploy to Azure's stable `beta` environment. The Vite build
+generates environment-specific manifests automatically: production assets use
+`https://outliner-plus.ex-asperis.com`, while beta assets use
+`https://outliner-plus-beta.ex-aperis.com` and the `Outliner+ Beta` identity.
 
 After Azure assigns the production hostname, use its absolute manifest URL when
 installing the extension in Owlbear Rodeo, for example:

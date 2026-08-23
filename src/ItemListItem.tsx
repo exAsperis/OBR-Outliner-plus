@@ -9,6 +9,7 @@ import LockedIcon from "@mui/icons-material/LockRounded";
 import UnlockIcon from "@mui/icons-material/LockOpenRounded";
 import ClickableIcon from "@mui/icons-material/TouchAppRounded";
 import ClickThroughIcon from "@mui/icons-material/DoNotTouchRounded";
+import InheritanceIcon from "@mui/icons-material/AccountTreeRounded";
 import FogCutOnIcon from "./icons/other/FogCutOn";
 import FogCutOffIcon from "./icons/other/FogCutOff";
 import { useInView } from "react-intersection-observer";
@@ -25,6 +26,8 @@ import LocateIcon from "@mui/icons-material/CenterFocusStrongRounded";
 import type { StackOperation } from "./stacking";
 import { getItemActionVisibility } from "./itemActionVisibility";
 import { SendMenuButton } from "./SendMenuButton";
+import { getEffectiveItemRule, getItemParentRule, getItemRule, inheritanceLabel, type StatefulProperty } from "./stateInheritance";
+import { setItemInheritedProperty, toggleItemInheritance } from "./virtualLayerService";
 
 const ACTION_SLOT_SIZE = 30;
 
@@ -62,6 +65,11 @@ export const ItemListItem = memo(function ({
   );
   const selection = useOwlbearStore((state) => state.selection);
   const role = useOwlbearStore((state) => state.role);
+  const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
+  const localRule = getItemRule(item);
+  const parentRule = getItemParentRule(item, virtualLayers);
+  const effectiveRule = getEffectiveItemRule(item, virtualLayers);
+  const inheritedOnly = Boolean(parentRule && !localRule);
 
   const [ref, inView] = useInView();
 
@@ -77,6 +85,7 @@ export const ItemListItem = memo(function ({
     hovering,
     focusWithin,
     layerMenuOpen: sendMenuOpen,
+    inheritanceActive: Boolean(effectiveRule),
     disableHit: item.disableHit,
     locked: item.locked,
     visible: item.visible,
@@ -98,23 +107,16 @@ export const ItemListItem = memo(function ({
     action();
   }
 
-  function handleLockClick() {
-    OBR.scene.items.updateItems([item], (items) => {
-      items[0].locked = !item.locked;
-    });
+  function handlePropertyClick(property: StatefulProperty) {
+    const current = effectiveRule?.[property] ?? (property === "disableHit" ? item.disableHit === true : item[property]);
+    if (localRule) void setItemInheritedProperty(item, property, !current);
+    else if (!inheritedOnly) void OBR.scene.items.updateItems([item], (items) => { items[0][property] = !current; });
   }
 
-  function handleDisableHitClick() {
-    OBR.scene.items.updateItems([item], (items) => {
-      items[0].disableHit = !item.disableHit;
-    });
-  }
-
-  function handleVisibleClick() {
-    OBR.scene.items.updateItems([item], (items) => {
-      items[0].visible = !item.visible;
-    });
-  }
+  const inheritanceColor = localRule && parentRule ? "error" : effectiveRule ? "warning" : "default";
+  const stateColor = (property: StatefulProperty) => localRule && parentRule && localRule[property] !== parentRule[property] ? "error" : effectiveRule ? "warning" : "default";
+  const disabledInheritedSx = inheritedOnly ? { "&.Mui-disabled": { color: "warning.main" } } : undefined;
+  const displayed = effectiveRule ?? { disableHit: item.disableHit === true, locked: item.locked, visible: item.visible };
 
   return (
     <ListItem
@@ -146,18 +148,34 @@ export const ItemListItem = memo(function ({
                 />
               </>
             ) : <EmptyActionSlot />}
+            {actionVisibility.showInheritance ? (
+              <Tooltip title={inheritanceLabel(Boolean(localRule), Boolean(parentRule))} disableInteractive>
+                <IconButton
+                  aria-label={inheritanceLabel(Boolean(localRule), Boolean(parentRule))}
+                  color={inheritanceColor}
+                  size="small"
+                  onPointerDown={stopActionEvent}
+                  onClick={(event) => handleActionClick(event, () => { void toggleItemInheritance(item); })}
+                >
+                  <InheritanceIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            ) : <EmptyActionSlot />}
             {actionVisibility.showDisableHit ? (
               <Tooltip
-                title={item.disableHit ? "Enable clicks" : "Disable clicks"}
+                title={displayed.disableHit ? "Enable clicks" : "Disable clicks"}
                 disableInteractive
               >
                 <IconButton
-                  aria-label={item.disableHit ? "Enable clicks" : "Disable clicks"}
+                  aria-label={displayed.disableHit ? "Enable clicks" : "Disable clicks"}
+                  color={stateColor("disableHit")}
+                  disabled={inheritedOnly}
+                  sx={disabledInheritedSx}
                   size="small"
                   onPointerDown={stopActionEvent}
-                  onClick={(event) => handleActionClick(event, handleDisableHitClick)}
+                  onClick={(event) => handleActionClick(event, () => handlePropertyClick("disableHit"))}
                 >
-                  {item.disableHit ? (
+                  {displayed.disableHit ? (
                     <ClickThroughIcon fontSize="small" />
                   ) : (
                     <ClickableIcon fontSize="small" />
@@ -167,16 +185,19 @@ export const ItemListItem = memo(function ({
             ) : <EmptyActionSlot />}
             {actionVisibility.showLock ? (
               <Tooltip
-                title={item.locked ? "Unlock" : "Lock"}
+                title={displayed.locked ? "Unlock" : "Lock"}
                 disableInteractive
               >
                 <IconButton
-                  aria-label={item.locked ? "Unlock" : "Lock"}
+                  aria-label={displayed.locked ? "Unlock" : "Lock"}
+                  color={stateColor("locked")}
+                  disabled={inheritedOnly}
+                  sx={disabledInheritedSx}
                   size="small"
                   onPointerDown={stopActionEvent}
-                  onClick={(event) => handleActionClick(event, handleLockClick)}
+                  onClick={(event) => handleActionClick(event, () => handlePropertyClick("locked"))}
                 >
-                  {item.locked ? (
+                  {displayed.locked ? (
                     <LockedIcon fontSize="small" />
                   ) : (
                     <UnlockIcon fontSize="small" />
@@ -187,7 +208,7 @@ export const ItemListItem = memo(function ({
             {actionVisibility.showVisibility ? (
               <Tooltip
                 title={
-                  item.visible
+                  displayed.visible
                     ? item.layer === "FOG"
                       ? "Cut"
                       : "Hide"
@@ -199,13 +220,16 @@ export const ItemListItem = memo(function ({
               >
                 <IconButton
                   size="small"
-                  aria-label={item.visible ? "Hide" : "Show"}
+                  aria-label={displayed.visible ? "Hide" : "Show"}
+                  color={stateColor("visible")}
+                  disabled={inheritedOnly}
+                  sx={disabledInheritedSx}
                   onPointerDown={stopActionEvent}
                   onClick={(event) =>
-                    handleActionClick(event, handleVisibleClick)
+                    handleActionClick(event, () => handlePropertyClick("visible"))
                   }
                 >
-                  {item.visible ? (
+                  {displayed.visible ? (
                     item.layer === "FOG" ? (
                       <FogCutOffIcon fontSize="small" />
                     ) : (
@@ -240,7 +264,7 @@ export const ItemListItem = memo(function ({
       }}
       sx={{
         ".MuiListItemButton-root": {
-          pr: showActions ? "172px" : undefined,
+          pr: showActions ? "202px" : undefined,
         },
       }}
     >

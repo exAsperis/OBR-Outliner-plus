@@ -3,6 +3,7 @@ export interface ItemActionVisibilityInput {
   hovering: boolean;
   focusWithin: boolean;
   layerMenuOpen: boolean;
+  inheritanceActive?: boolean;
   disableHit?: boolean;
   locked: boolean;
   visible: boolean;
@@ -13,6 +14,7 @@ export interface ItemActionVisibilityInput {
 export interface ItemActionVisibility {
   showActionRow: boolean;
   showGeneralActions: boolean;
+  showInheritance: boolean;
   showDisableHit: boolean;
   showLock: boolean;
   showVisibility: boolean;
@@ -24,6 +26,7 @@ export function getItemActionVisibility({
   hovering,
   focusWithin,
   layerMenuOpen,
+  inheritanceActive = false,
   disableHit = false,
   locked,
   visible,
@@ -32,13 +35,15 @@ export function getItemActionVisibility({
 }: ItemActionVisibilityInput): ItemActionVisibility {
   const interacting = selected || hovering || focusWithin;
   const showGeneralActions = interacting || layerMenuOpen;
-  const showDisableHit = hasUpdatePermission && (interacting || disableHit);
-  const showLock = hasUpdatePermission && (interacting || locked);
-  const showVisibility = isGm && (interacting || !visible);
+  const showInheritance = hasUpdatePermission && (interacting || inheritanceActive);
+  const showDisableHit = hasUpdatePermission && (interacting || inheritanceActive || disableHit);
+  const showLock = hasUpdatePermission && (interacting || inheritanceActive || locked);
+  const showVisibility = isGm && (interacting || inheritanceActive || !visible);
 
   return {
-    showActionRow: showGeneralActions || showDisableHit || showLock || showVisibility,
+    showActionRow: showGeneralActions || showInheritance || showDisableHit || showLock || showVisibility,
     showGeneralActions,
+    showInheritance,
     showDisableHit,
     showLock,
     showVisibility,

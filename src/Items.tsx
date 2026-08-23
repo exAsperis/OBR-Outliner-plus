@@ -10,7 +10,7 @@ import { stackItems } from "./stackItems";
 import type { StackOperation } from "./stacking";
 import { useOwlbearStore } from "./useOwlbearStore";
 import { UNASSIGNED_ID, orderedGroupIds, resolveGroupId, type VirtualLayerDefinition } from "./virtualLayers";
-import { addVirtualLayer, assignItems, moveStackingGroup, removeVirtualLayer, setGroupProperty, stackVirtualLayer, updateVirtualLayerName } from "./virtualLayerService";
+import { addVirtualLayer, assignItems, moveStackingGroup, removeVirtualLayer, stackVirtualLayer, updateVirtualLayerName } from "./virtualLayerService";
 import { getVerticalDropPosition, getVerticalDropPositionAtPoint, type DropPosition } from "./dragPosition";
 import { getOutlinerLayers } from "./layers";
 
@@ -175,7 +175,7 @@ export function Items({ search }: { search: string }) {
   const sortableIds = [...shownIds, ...virtualLayers.layers.map((entry) => `VL:${entry.id}`), ...shownLayers.map((layer) => `UG:${layer}`)];
   return <DndContext onDragStart={dragStart} onDragMove={dragMove} onDragEnd={dragEnd} onDragCancel={clearDrag} collisionDetection={collisionDetection} sensors={sensors}>
     <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-      {shownLayers.map((layer) => <ItemList key={layer} layer={layer} role={role} searching={searching} items={shown.filter((item) => item.layer === layer)} nativeItems={items.filter((item) => item.layer === layer)} definitions={virtualLayers.layers.filter((entry) => entry.obrLayer === layer)} groupOrder={orderedGroupIds(virtualLayers, layer)} groupDropPosition={groupDropPosition} resolveGroup={(item) => resolveGroupId(item, virtualLayers)} onCreate={() => promptCreate(layer)} onRename={promptRename} onDelete={confirmDelete} onGroupProperty={(ids, property, value) => void setGroupProperty(ids, property, value)} onItemSelect={select} onItemFocus={(item) => void recenter([...new Set([...(selection ?? []), item.id])])} onItemLocate={(item) => void locate(item)} onItemStack={(ids, operation: StackOperation) => void stackItems(items, ids, operation)} onGroupStack={(nativeLayer, id, operation) => void stackVirtualLayer(nativeLayer, id, operation)} />)}
+      {shownLayers.map((layer) => <ItemList key={layer} layer={layer} role={role} searching={searching} items={shown.filter((item) => item.layer === layer)} nativeItems={items.filter((item) => item.layer === layer)} definitions={virtualLayers.layers.filter((entry) => entry.obrLayer === layer)} groupOrder={orderedGroupIds(virtualLayers, layer)} groupDropPosition={groupDropPosition} resolveGroup={(item) => resolveGroupId(item, virtualLayers)} onCreate={() => promptCreate(layer)} onRename={promptRename} onDelete={confirmDelete} onItemSelect={select} onItemFocus={(item) => void recenter([...new Set([...(selection ?? []), item.id])])} onItemLocate={(item) => void locate(item)} onItemStack={(ids, operation: StackOperation) => void stackItems(items, ids, operation)} onGroupStack={(nativeLayer, id, operation) => void stackVirtualLayer(nativeLayer, id, operation)} />)}
       <ItemDragOverlay dragId={dragId} />
     </SortableContext>
   </DndContext>;

@@ -3,15 +3,15 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { PluginGate } from "./PluginGate";
 import { PluginThemeProvider } from "./PluginThemeProvider";
-import { SendToLayerApp } from "./SendToLayerApp";
-import "./sendToLayer.css";
+import { SendMenuApp } from "./SendMenuApp";
+import "./sendMenu.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <PluginGate>
       <PluginThemeProvider>
         <CssBaseline />
-        <SendToLayerApp />
+        <SendMenuApp />
       </PluginThemeProvider>
     </PluginGate>
   </React.StrictMode>,

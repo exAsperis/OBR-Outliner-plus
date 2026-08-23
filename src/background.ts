@@ -1,38 +1,9 @@
 import OBR from "@owlbear-rodeo/sdk";
 import { EXTENSION_ID } from "./constants";
-import { stackItems } from "./stackItems";
-import type { StackOperation } from "./stacking";
 import { hasBoundaryViolation, stateFromMetadata } from "./virtualLayers";
 import { isVirtualLayerWriteInFlight, normalizeLayers } from "./virtualLayerService";
 
-const commands: Array<{
-  operation: StackOperation;
-  label: string;
-  icon: string;
-}> = [
-  {
-    operation: "front",
-    label: "Send to Front",
-    icon: "/send-to-front.svg?v=0.4.1",
-  },
-  {
-    operation: "forward",
-    label: "Send Forward",
-    icon: "/send-forward.svg?v=0.4.1",
-  },
-  {
-    operation: "backward",
-    label: "Send Backward",
-    icon: "/send-backward.svg?v=0.4.1",
-  },
-  {
-    operation: "back",
-    label: "Send to Back",
-    icon: "/send-to-back.svg?v=0.4.1",
-  },
-];
-
-const SEND_TO_LAYER_CONTEXT_MENU_ID = `${EXTENSION_ID}/send-to-layer`;
+const SEND_CONTEXT_MENU_ID = `${EXTENSION_ID}/send`;
 
 let ready = false;
 let unsubscribeItems: (() => void) | undefined;
@@ -65,45 +36,21 @@ OBR.onReady(async () => {
   ready = true;
   await startReconciliation();
   OBR.scene.onReadyChange(() => { void startReconciliation(); });
-  for (const command of commands) {
-    await OBR.contextMenu.create({
-      id: `${EXTENSION_ID}/stack/${command.operation}`,
-      icons: [
-        {
-          icon: command.icon,
-          label: command.label,
-          filter: { permissions: ["UPDATE"] },
-        },
-      ],
-      async onClick(context) {
-        if (!context.items.length) {
-          return;
-        }
-        const sceneItems = await OBR.scene.items.getItems();
-        await stackItems(
-          sceneItems,
-          context.items.map((item) => item.id),
-          command.operation
-        );
-      },
-    });
-  }
-
   await OBR.contextMenu.create({
-    id: SEND_TO_LAYER_CONTEXT_MENU_ID,
+    id: SEND_CONTEXT_MENU_ID,
     icons: [
       {
-        icon: "/send-to-layer.svg?v=0.4.1",
-        label: "Send to Layer",
+        icon: "/send.svg?v=0.4.1",
+        label: "Send…",
         filter: { permissions: ["UPDATE"] },
       },
     ],
     embed: {
       url: new URL(
-        "/send-to-layer.html?v=0.4.1",
+        "/send-menu.html?v=0.4.1",
         window.location.origin
       ).href,
-      height: 384,
+      height: 168,
     },
   });
 });
@@ -112,12 +59,7 @@ window.addEventListener("beforeunload", () => {
   if (!ready) {
     return;
   }
-  for (const command of commands) {
-    void OBR.contextMenu.remove(
-      `${EXTENSION_ID}/stack/${command.operation}`
-    );
-  }
-  void OBR.contextMenu.remove(SEND_TO_LAYER_CONTEXT_MENU_ID);
+  void OBR.contextMenu.remove(SEND_CONTEXT_MENU_ID);
   unsubscribeItems?.();
   unsubscribeMetadata?.();
 });

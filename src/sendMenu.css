@@ -35,27 +35,35 @@ body {
   background: rgb(127 127 127 / 65%);
 }
 
-#layers {
+#send-menu {
   width: 100%;
   padding: 4px;
 }
 
-#layers .MuiListItemButton-root {
+#send-menu .MuiListItemButton-root {
   min-height: 32px;
   border-radius: 6px;
 }
 
-#layers .MuiListItemText-root {
+#send-menu .MuiListItemText-root {
   margin-top: 0;
   margin-bottom: 0;
 }
 
-#layers .virtual-layer {
+#send-menu .back-item {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgb(127 127 127 / 25%);
+}
+
+#send-menu .virtual-layer {
   min-height: 30px;
   padding-left: 48px;
 }
 
-#layers .virtual-layer.unassigned {
+#send-menu .virtual-layer.unassigned {
   margin-bottom: 4px;
   border-bottom: 1px solid rgb(127 127 127 / 25%);
   font-style: italic;

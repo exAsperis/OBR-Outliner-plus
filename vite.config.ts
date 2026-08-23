@@ -15,7 +15,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         background: resolve(__dirname, 'background.html'),
-        sendToLayer: resolve(__dirname, 'send-to-layer.html'),
+        sendMenu: resolve(__dirname, 'send-menu.html'),
       },
     },
   },

@@ -49,7 +49,7 @@ OBR.onReady(async () => {
       {
         icon: `/send.svg?v=${import.meta.env.VITE_RELEASE_VERSION}`,
         label: "Send…",
-        filter: { permissions: ["UPDATE"] },
+        filter: { permissions: ["UPDATE"], roles: ["GM"] },
       },
     ],
     embed: {

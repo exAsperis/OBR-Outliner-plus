@@ -97,7 +97,7 @@ Azure deployment token to the GitHub repository as the
 Pushes to `beta` deploy to Azure's stable `beta` environment. The Vite build
 generates environment-specific manifests automatically: production assets use
 `https://outliner-plus.ex-asperis.com`, while beta assets use
-`https://outliner-plus-beta.ex-aperis.com` and the `Outliner+ Beta` identity.
+`https://outliner-plus-beta.ex-asperis.com` and the `Outliner+ Beta` identity.
 
 After Azure assigns the production hostname, use its absolute manifest URL when
 installing the extension in Owlbear Rodeo, for example:

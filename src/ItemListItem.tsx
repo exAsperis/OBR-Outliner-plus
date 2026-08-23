@@ -1,6 +1,5 @@
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
-import ListItemText from "@mui/material/ListItemText";
 import OBR, { Item } from "@owlbear-rodeo/sdk";
 import { ItemIcon } from "./ItemIcon";
 import { ItemText } from "./ItemText";
@@ -18,17 +17,12 @@ import { memo, useState } from "react";
 import useTheme from "@mui/material/styles/useTheme";
 import ListItem from "@mui/material/ListItem";
 import Stack from "@mui/material/Stack";
-import { IconButton, Menu, MenuItem, SvgIcon } from "@mui/material";
+import { IconButton } from "@mui/material";
 import { useItemHsaPermission } from "./useHasPermission";
 import LocateIcon from "@mui/icons-material/CenterFocusStrongRounded";
-import SendToBackIcon from "@mui/icons-material/FlipToBackRounded";
-import SendToFrontIcon from "@mui/icons-material/FlipToFrontRounded";
 import type { StackOperation } from "./stacking";
-import { formatLayerName, getOutlinerLayers } from "./layers";
-import { LayerIcon } from "./LayerIcon";
-import { assignItems } from "./virtualLayerService";
-import { orderedGroupIds, UNASSIGNED_ID } from "./virtualLayers";
 import { getItemActionVisibility } from "./itemActionVisibility";
+import { SendMenuButton } from "./SendMenuButton";
 
 const ACTION_SLOT_SIZE = 30;
 
@@ -58,7 +52,7 @@ export const ItemListItem = memo(function ({
   onClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
   onDoubleClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
   onLocate?: () => void;
-  onStack?: (operation: StackOperation) => void;
+  onStack?: (itemIds: string[], operation: StackOperation) => void;
   dragging?: boolean;
 }) {
   const selected = useOwlbearStore(
@@ -66,7 +60,6 @@ export const ItemListItem = memo(function ({
   );
   const selection = useOwlbearStore((state) => state.selection);
   const role = useOwlbearStore((state) => state.role);
-  const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
 
   const [ref, inView] = useInView();
 
@@ -74,15 +67,14 @@ export const ItemListItem = memo(function ({
 
   const [hovering, setHovering] = useState(false);
   const [focusWithin, setFocusWithin] = useState(false);
-  const [layerMenuAnchor, setLayerMenuAnchor] = useState<HTMLElement | null>(null);
-  const [moving, setMoving] = useState(false);
+  const [sendMenuOpen, setSendMenuOpen] = useState(false);
 
   const hasUpdatePermission = useItemHsaPermission(item, "UPDATE");
   const actionVisibility = getItemActionVisibility({
     selected,
     hovering,
     focusWithin,
-    layerMenuOpen: Boolean(layerMenuAnchor),
+    layerMenuOpen: sendMenuOpen,
     locked: item.locked,
     visible: item.visible,
     hasUpdatePermission,
@@ -138,83 +130,12 @@ export const ItemListItem = memo(function ({
             </Tooltip> : <EmptyActionSlot />}
             {actionVisibility.showGeneralActions && hasUpdatePermission ? (
               <>
-                <Tooltip title="Send to Layer" disableInteractive>
-                  <IconButton
-                    aria-label="Send to Layer"
-                    size="small"
-                    onPointerDown={stopActionEvent}
-                    onClick={(event) => {
-                      stopActionEvent(event);
-                      setLayerMenuAnchor(event.currentTarget);
-                    }}
-                  >
-                    <SvgIcon fontSize="small">
-                      <path d="m8 2 7 3.5L8 9 1 5.5 8 2ZM2.7 9.4 8 12l5.3-2.6L15 11l-7 3.5L1 11l1.7-1.6Zm0 5L8 17l5.3-2.6L15 16l-7 3.5L1 16l1.7-1.6ZM17 7l5 5-5 5v-3h-3v-4h3V7Z" />
-                    </SvgIcon>
-                  </IconButton>
-                </Tooltip>
-                <Menu
-                  anchorEl={layerMenuAnchor}
-                  open={Boolean(layerMenuAnchor)}
-                  onClose={() => setLayerMenuAnchor(null)}
-                  MenuListProps={{ dense: true, "aria-label": "Destination layer" }}
-                  slotProps={{ paper: { sx: { width: "max-content", maxWidth: "calc(100vw - 16px)" } } }}
-                >
-                  {getOutlinerLayers(role).flatMap((layer) => {
-                    const definitions = virtualLayers.layers.filter((entry) => entry.obrLayer === layer);
-                    const move = async (virtualLayerId?: string) => {
-                      setMoving(true);
-                      try {
-                        const ids = selected && selection?.length ? selection : [item.id];
-                        await assignItems(ids, virtualLayerId, layer);
-                        setLayerMenuAnchor(null);
-                      } catch {
-                        window.alert("Unable to move the selected items.");
-                      } finally {
-                        setMoving(false);
-                      }
-                    };
-                    return [
-                      <MenuItem key={layer} disabled={moving} onClick={() => void move()}>
-                        <ListItemIcon sx={{ color: "text.secondary", minWidth: "32px", "& svg": { fontSize: "1.25rem" } }}><LayerIcon layer={layer} /></ListItemIcon>
-                        <ListItemText primary={formatLayerName(layer)} />
-                      </MenuItem>,
-                      ...(definitions.length ? orderedGroupIds(virtualLayers, layer).map((groupId) => {
-                        const definition = definitions.find((entry) => entry.id === groupId);
-                        return <MenuItem key={`${layer}:${groupId}`} disabled={moving} sx={{ pl: 6 }} onClick={() => void move(definition?.id)}><ListItemText primary={definition?.name ?? "Unassigned"} sx={{ fontStyle: groupId === UNASSIGNED_ID ? "italic" : undefined }} /></MenuItem>;
-                      }) : []),
-                    ];
-                  })}
-                </Menu>
+                <SendMenuButton
+                  itemIds={selected && selection?.length ? selection : [item.id]}
+                  onStack={(operation) => onStack?.(selected && selection?.length ? selection : [item.id], operation)}
+                  onOpenChange={setSendMenuOpen}
+                />
               </>
-            ) : <EmptyActionSlot />}
-            {actionVisibility.showGeneralActions && hasUpdatePermission ? (
-              <Tooltip title="Send to Back" disableInteractive>
-                <IconButton
-                  aria-label="Send to Back"
-                  size="small"
-                  onPointerDown={stopActionEvent}
-                  onClick={(event) =>
-                    handleActionClick(event, () => onStack?.("back"))
-                  }
-                >
-                  <SendToBackIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            ) : <EmptyActionSlot />}
-            {actionVisibility.showGeneralActions && hasUpdatePermission ? (
-              <Tooltip title="Send to Front" disableInteractive>
-                <IconButton
-                  aria-label="Send to Front"
-                  size="small"
-                  onPointerDown={stopActionEvent}
-                  onClick={(event) =>
-                    handleActionClick(event, () => onStack?.("front"))
-                  }
-                >
-                  <SendToFrontIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
             ) : <EmptyActionSlot />}
             {actionVisibility.showLock ? (
               <Tooltip
@@ -291,7 +212,7 @@ export const ItemListItem = memo(function ({
       }}
       sx={{
         ".MuiListItemButton-root": {
-          pr: showActions ? "202px" : undefined,
+          pr: showActions ? "142px" : undefined,
         },
       }}
     >

@@ -24,7 +24,7 @@ export function ItemText({ item }: { item: Item }) {
     return <TextableText item={item} name={name} />;
   } else {
     return (
-      <ListItemText primary={name} primaryTypographyProps={{ noWrap: true }} />
+      <ListItemText sx={{ minWidth: 0 }} primary={name} primaryTypographyProps={{ noWrap: true }} />
     );
   }
 }
@@ -40,6 +40,7 @@ function TextableText({ item, name }: { item: Textable; name: string }) {
 
   return (
     <ListItemText
+      sx={{ minWidth: 0 }}
       primaryTypographyProps={{ noWrap: true }}
       primary={plainText || name}
     />

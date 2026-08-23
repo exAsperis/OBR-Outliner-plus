@@ -26,6 +26,7 @@ import type { StackOperation } from "./stacking";
 import { useOwlbearStore } from "./useOwlbearStore";
 import { UNASSIGNED_ID, type VirtualLayerDefinition } from "./virtualLayers";
 import type { DropPosition } from "./dragPosition";
+import { SendMenuButton } from "./SendMenuButton";
 
 const NATIVE_LAYER_HEADER_HEIGHT = 40;
 
@@ -45,7 +46,8 @@ interface Props {
   onItemSelect: (item: Item, event: React.MouseEvent<HTMLDivElement>) => void;
   onItemFocus: (item: Item) => void;
   onItemLocate: (item: Item) => void;
-  onItemStack: (item: Item, operation: StackOperation) => void;
+  onItemStack: (ids: string[], operation: StackOperation) => void;
+  onGroupStack: (ids: string[], operation: StackOperation) => void;
 }
 
 export function ItemList(props: Props) {
@@ -58,7 +60,7 @@ export function ItemList(props: Props) {
     <SortableItem key={item.id} itemId={item.id} disabled={props.searching} data={{ kind: "item", nativeLayer: item.layer, groupId: props.resolveGroup(item) }}>
       <ItemListItem item={item} onClick={(event) => props.onItemSelect(item, event)}
         onDoubleClick={() => props.onItemFocus(item)} onLocate={() => props.onItemLocate(item)}
-        onStack={(operation) => props.onItemStack(item, operation)} />
+        onStack={props.onItemStack} />
     </SortableItem>
   ));
   return <Box component="section" sx={{ position: "relative" }}>
@@ -68,7 +70,7 @@ export function ItemList(props: Props) {
       {props.role === "GM" && !props.searching && <Tooltip title="Create virtual layer" placement="left" disableInteractive><IconButton size="small" aria-label={`Create virtual layer in ${layerName}`} onClick={(event) => { event.stopPropagation(); props.onCreate(); }}><AddIcon fontSize="small" /></IconButton></Tooltip>}
       {open ? <ExpandMore /> : <ChevronRight />}
     </ListItemButton>
-    <Collapse in={open} unmountOnExit><List component="div" dense>
+    <Collapse in={open} unmountOnExit><List component="div" dense disablePadding>
       {definitions.length === 0 ? <><SortableItem itemId={`START:${layer}:${UNASSIGNED_ID}`} disabled={props.searching} data={{ kind: "start", nativeLayer: layer, groupId: UNASSIGNED_ID }} />{renderItems(items)}</> : <>
         {groupOrder.map((groupId) => {
           const definition = groupId === UNASSIGNED_ID
@@ -81,7 +83,7 @@ export function ItemList(props: Props) {
   </Box>;
 }
 
-function Group({ definition, items, role, searching, groupDropPosition, onRename, onDelete, onGroupProperty, renderItems }: Props & { definition: VirtualLayerDefinition; renderItems: (items: Item[]) => React.ReactNode }) {
+function Group({ definition, items, role, searching, groupDropPosition, onRename, onDelete, onGroupProperty, onGroupStack, renderItems }: Props & { definition: VirtualLayerDefinition; renderItems: (items: Item[]) => React.ReactNode }) {
   const [open, setOpen] = useState(true);
   const selected = useOwlbearStore((state) => items.some((item) => state.selection?.includes(item.id)));
   const unassigned = definition.id === UNASSIGNED_ID;
@@ -94,6 +96,7 @@ function Group({ definition, items, role, searching, groupDropPosition, onRename
     {open ? <ExpandMore fontSize="small" /> : <ChevronRight fontSize="small" />}<ListItemText primary={groupHeading} sx={{ minWidth: 0 }} primaryTypographyProps={{ noWrap: true }} />
     {role === "GM" && <Stack direction="row" flexShrink={0}>
       {!unassigned && <><Tooltip title="Edit"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onRename(definition); }}><EditIcon fontSize="small" /></IconButton></Tooltip><Tooltip title="Delete"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(definition); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip></>}
+      <SendMenuButton itemIds={items.map((item) => item.id)} onStack={(operation) => onGroupStack(items.map((item) => item.id), operation)} confirmLayerMove={definition.name} />
       <Tooltip title={allLocked ? "Unlock all" : "Lock all"}><IconButton size="small" color={mixedLocked ? "warning" : "default"} disabled={!items.length} onClick={(event) => { event.stopPropagation(); onGroupProperty(items.map((item) => item.id), "locked", !allLocked); }}>{allLocked ? <LockedIcon fontSize="small" /> : <UnlockIcon fontSize="small" />}</IconButton></Tooltip>
       <Tooltip title={allVisible ? "Hide all" : "Show all"}><IconButton size="small" color={mixedVisible ? "warning" : "default"} disabled={!items.length} onClick={(event) => { event.stopPropagation(); onGroupProperty(items.map((item) => item.id), "visible", !allVisible); }}>{allVisible ? <VisibleIcon fontSize="small" /> : <HiddenIcon fontSize="small" />}</IconButton></Tooltip>
     </Stack>}

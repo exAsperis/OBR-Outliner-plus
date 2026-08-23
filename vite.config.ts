@@ -20,6 +20,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
+        extension: resolve(__dirname, 'extension.html'),
         background: resolve(__dirname, 'background.html'),
         sendMenu: resolve(__dirname, 'send-menu.html'),
       },

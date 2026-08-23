@@ -1,10 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'node:path'
+import { cpSync } from 'node:fs'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), {
+    name: 'copy-website-assets',
+    closeBundle() {
+      cpSync(resolve(__dirname, 'website-assets'), resolve(__dirname, 'dist'), { recursive: true })
+    },
+  }],
   server: {
     cors: {
       origin: "https://www.owlbear.rodeo",

@@ -7,15 +7,17 @@ import { PluginGate } from "./PluginGate";
 import { PluginThemeProvider } from "./PluginThemeProvider";
 import CssBaseline from "@mui/material/CssBaseline";
 import { GlobalStyles } from "./GlobalStyles";
+import OBR from "@owlbear-rodeo/sdk";
+import { Website } from "./Website";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <PluginGate>
+    {OBR.isAvailable ? <PluginGate>
       <PluginThemeProvider>
         <CssBaseline />
         <GlobalStyles />
         <App />
       </PluginThemeProvider>
-    </PluginGate>
+    </PluginGate> : <Website />}
   </React.StrictMode>
 );

@@ -27,10 +27,11 @@ export function Items({ search }: { search: string }) {
   const shownIds = shown.map((item) => item.id);
   const [dragId, setDragId] = useState<string | null>(null);
   const [groupDropPosition, setGroupDropPosition] = useState<DropPosition | undefined>();
-  const dragStartClientY = useRef<number | undefined>();
+  const dragPointerClientY = useRef<number | undefined>();
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 3 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }), useSensor(KeyboardSensor));
 
   const collisionDetection: CollisionDetection = (args) => {
+    dragPointerClientY.current = args.pointerCoordinates?.y;
     const activeData = args.active.data.current as { kind?: string; nativeLayer?: string } | undefined;
     if (activeData?.kind !== "group") return closestCenter(args);
     return closestCenter({
@@ -108,19 +109,8 @@ export function Items({ search }: { search: string }) {
   function promptRename(definition: VirtualLayerDefinition) { const name = window.prompt("Rename virtual layer", definition.name); if (name !== null) void updateVirtualLayerName(definition.id, name).catch((error: Error) => window.alert(error.message)); }
   function confirmDelete(definition: VirtualLayerDefinition) { if (window.confirm(`Delete virtual layer "${definition.name}"?\nIts objects will become Unassigned. No objects will be deleted.`)) void removeVirtualLayer(definition.id).catch(() => window.alert("Unable to delete the virtual layer.")); }
 
-  function pointerClientY(event: Event): number | undefined {
-    if ("clientY" in event && typeof event.clientY === "number") return event.clientY;
-    if ("touches" in event) {
-      const touchEvent = event as TouchEvent;
-      return touchEvent.touches[0]?.clientY ?? touchEvent.changedTouches[0]?.clientY;
-    }
-    return undefined;
-  }
-
   function dropPositionForEvent(event: DragMoveEvent | DragEndEvent): DropPosition {
-    const pointerY = dragStartClientY.current === undefined
-      ? undefined
-      : dragStartClientY.current + event.delta.y;
+    const pointerY = dragPointerClientY.current;
     if (pointerY !== undefined && event.over) return getVerticalDropPositionAtPoint(pointerY, event.over.rect);
     const translated = event.active.rect.current.translated ?? event.active.rect.current.initial;
     return translated && event.over ? getVerticalDropPosition(translated, event.over.rect) : "before";
@@ -128,7 +118,7 @@ export function Items({ search }: { search: string }) {
 
   function dragStart(event: DragStartEvent) {
     if (typeof event.active.id !== "string") return;
-    dragStartClientY.current = pointerClientY(event.activatorEvent);
+    dragPointerClientY.current = undefined;
     setDragId(event.active.id);
     setGroupDropPosition(undefined);
     if (!event.active.id.includes(":" ) && (!selection?.includes(event.active.id))) void OBR.player.select([event.active.id]);
@@ -141,7 +131,7 @@ export function Items({ search }: { search: string }) {
   }
 
   function clearDrag() {
-    dragStartClientY.current = undefined;
+    dragPointerClientY.current = undefined;
     setDragId(null);
     setGroupDropPosition(undefined);
   }

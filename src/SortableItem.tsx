@@ -15,12 +15,14 @@ export function SortableItem({
   disabled = false,
   data,
   stickyTop,
+  indicatorPosition,
 }: {
   itemId: string;
   children?: React.ReactNode;
   disabled?: boolean;
   data: SortableData;
   stickyTop?: number;
+  indicatorPosition?: "before" | "after";
 }) {
   const { active, attributes, listeners, setNodeRef, isDragging, isOver, rect } = useSortable(
     { id: itemId, disabled, data }
@@ -31,7 +33,9 @@ export function SortableItem({
     (activeData.kind === "item" && (data.kind === "item" || data.kind === "group" || data.kind === "start"))
   );
   const activeRect = active?.rect.current.translated ?? active?.rect.current.initial;
-  const position = activeRect && rect.current
+  const position = activeData?.kind === "group" && data.kind === "group" && indicatorPosition
+    ? indicatorPosition
+    : activeRect && rect.current
     ? getVerticalDropPosition(activeRect, rect.current)
     : "before";
   const showLine = isOver && !isDragging && compatible && data.kind !== "group" ||
@@ -62,6 +66,7 @@ export function SortableItem({
           : stickyTop === undefined
             ? undefined
             : "background.paper",
+        opacity: isDragging && data.kind === "group" ? 0.45 : undefined,
         outline: "none",
       }}
       {...attributes}

@@ -1,8 +1,8 @@
-import { DndContext, type DragEndEvent, type DragStartEvent, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, type CollisionDetection, type DragEndEvent, type DragMoveEvent, type DragStartEvent, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import OBR, { buildShape, type BoundingBox, type Item, Math2, type Vector2, isShape } from "@owlbear-rodeo/sdk";
 import Fuse from "fuse.js";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ItemDragOverlay } from "./ItemDragOverlay";
 import { ItemList } from "./ItemList";
 import { isTextable, toPlainText } from "./helpers";
@@ -11,7 +11,7 @@ import type { StackOperation } from "./stacking";
 import { useOwlbearStore } from "./useOwlbearStore";
 import { UNASSIGNED_ID, orderedGroupIds, resolveGroupId, type VirtualLayerDefinition } from "./virtualLayers";
 import { addVirtualLayer, assignItems, moveStackingGroup, removeVirtualLayer, setGroupProperty, updateVirtualLayerName } from "./virtualLayerService";
-import { getVerticalDropPosition, type DropPosition } from "./dragPosition";
+import { getVerticalDropPosition, getVerticalDropPositionAtPoint, type DropPosition } from "./dragPosition";
 import { getOutlinerLayers } from "./layers";
 
 export function Items({ search }: { search: string }) {
@@ -26,7 +26,21 @@ export function Items({ search }: { search: string }) {
   const shown = useMemo(() => filtered.filter((item) => availableLayers.has(item.layer) && !(!item.visible && role === "PLAYER")).sort((a, b) => b.zIndex - a.zIndex || a.id.localeCompare(b.id)), [availableLayers, filtered, role]);
   const shownIds = shown.map((item) => item.id);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [groupDropPosition, setGroupDropPosition] = useState<DropPosition | undefined>();
+  const dragStartClientY = useRef<number | undefined>();
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 3 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }), useSensor(KeyboardSensor));
+
+  const collisionDetection: CollisionDetection = (args) => {
+    const activeData = args.active.data.current as { kind?: string; nativeLayer?: string } | undefined;
+    if (activeData?.kind !== "group") return closestCenter(args);
+    return closestCenter({
+      ...args,
+      droppableContainers: args.droppableContainers.filter((container) => {
+        const data = container.data.current as { kind?: string; nativeLayer?: string } | undefined;
+        return container.id !== args.active.id && data?.kind === "group" && data.nativeLayer === activeData.nativeLayer;
+      }),
+    });
+  };
 
   async function select(item: Item, event: React.MouseEvent<HTMLDivElement>) {
     const current = selection ?? [];
@@ -94,14 +108,49 @@ export function Items({ search }: { search: string }) {
   function promptRename(definition: VirtualLayerDefinition) { const name = window.prompt("Rename virtual layer", definition.name); if (name !== null) void updateVirtualLayerName(definition.id, name).catch((error: Error) => window.alert(error.message)); }
   function confirmDelete(definition: VirtualLayerDefinition) { if (window.confirm(`Delete virtual layer "${definition.name}"?\nIts objects will become Unassigned. No objects will be deleted.`)) void removeVirtualLayer(definition.id).catch(() => window.alert("Unable to delete the virtual layer.")); }
 
-  function dragStart(event: DragStartEvent) { if (typeof event.active.id !== "string") return; setDragId(event.active.id); if (!event.active.id.includes(":" ) && (!selection?.includes(event.active.id))) void OBR.player.select([event.active.id]); }
-  function dragEnd(event: DragEndEvent) {
-    setDragId(null); if (searching || typeof event.active.id !== "string" || typeof event.over?.id !== "string") return;
-    const active = event.active.id, over = event.over.id;
+  function pointerClientY(event: Event): number | undefined {
+    if ("clientY" in event && typeof event.clientY === "number") return event.clientY;
+    if ("touches" in event) {
+      const touchEvent = event as TouchEvent;
+      return touchEvent.touches[0]?.clientY ?? touchEvent.changedTouches[0]?.clientY;
+    }
+    return undefined;
+  }
+
+  function dropPositionForEvent(event: DragMoveEvent | DragEndEvent): DropPosition {
+    const pointerY = dragStartClientY.current === undefined
+      ? undefined
+      : dragStartClientY.current + event.delta.y;
+    if (pointerY !== undefined && event.over) return getVerticalDropPositionAtPoint(pointerY, event.over.rect);
     const translated = event.active.rect.current.translated ?? event.active.rect.current.initial;
-    const dropPosition: DropPosition = translated
-      ? getVerticalDropPosition(translated, event.over.rect)
-      : "before";
+    return translated && event.over ? getVerticalDropPosition(translated, event.over.rect) : "before";
+  }
+
+  function dragStart(event: DragStartEvent) {
+    if (typeof event.active.id !== "string") return;
+    dragStartClientY.current = pointerClientY(event.activatorEvent);
+    setDragId(event.active.id);
+    setGroupDropPosition(undefined);
+    if (!event.active.id.includes(":" ) && (!selection?.includes(event.active.id))) void OBR.player.select([event.active.id]);
+  }
+
+  function dragMove(event: DragMoveEvent) {
+    if (typeof event.active.id === "string" && (event.active.id.startsWith("VL:") || event.active.id.startsWith("UG:")) && event.over) {
+      setGroupDropPosition(dropPositionForEvent(event));
+    }
+  }
+
+  function clearDrag() {
+    dragStartClientY.current = undefined;
+    setDragId(null);
+    setGroupDropPosition(undefined);
+  }
+
+  function dragEnd(event: DragEndEvent) {
+    const finalDropPosition = dropPositionForEvent(event);
+    clearDrag(); if (searching || typeof event.active.id !== "string" || typeof event.over?.id !== "string") return;
+    const active = event.active.id, over = event.over.id;
+    const dropPosition = finalDropPosition;
     if (active.startsWith("VL:") || active.startsWith("UG:")) {
       if (role !== "GM") return;
       const unassigned = active.startsWith("UG:");
@@ -134,9 +183,9 @@ export function Items({ search }: { search: string }) {
     return searching ? base.filter((layer) => shown.some((item) => item.layer === layer)) : base;
   }, [role, searching, shown]);
   const sortableIds = [...shownIds, ...virtualLayers.layers.map((entry) => `VL:${entry.id}`), ...shownLayers.map((layer) => `UG:${layer}`)];
-  return <DndContext onDragStart={dragStart} onDragEnd={dragEnd} onDragCancel={() => setDragId(null)} collisionDetection={closestCenter} sensors={sensors}>
+  return <DndContext onDragStart={dragStart} onDragMove={dragMove} onDragEnd={dragEnd} onDragCancel={clearDrag} collisionDetection={collisionDetection} sensors={sensors}>
     <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-      {shownLayers.map((layer) => <ItemList key={layer} layer={layer} role={role} searching={searching} items={shown.filter((item) => item.layer === layer)} definitions={virtualLayers.layers.filter((entry) => entry.obrLayer === layer)} groupOrder={orderedGroupIds(virtualLayers, layer)} resolveGroup={(item) => resolveGroupId(item, virtualLayers)} onCreate={() => promptCreate(layer)} onRename={promptRename} onDelete={confirmDelete} onGroupProperty={(ids, property, value) => void setGroupProperty(ids, property, value)} onItemSelect={select} onItemFocus={(item) => void recenter([...new Set([...(selection ?? []), item.id])])} onItemLocate={(item) => void locate(item)} onItemStack={(item, operation: StackOperation) => void stackItems(items, [item.id], operation)} />)}
+      {shownLayers.map((layer) => <ItemList key={layer} layer={layer} role={role} searching={searching} items={shown.filter((item) => item.layer === layer)} definitions={virtualLayers.layers.filter((entry) => entry.obrLayer === layer)} groupOrder={orderedGroupIds(virtualLayers, layer)} groupDropPosition={groupDropPosition} resolveGroup={(item) => resolveGroupId(item, virtualLayers)} onCreate={() => promptCreate(layer)} onRename={promptRename} onDelete={confirmDelete} onGroupProperty={(ids, property, value) => void setGroupProperty(ids, property, value)} onItemSelect={select} onItemFocus={(item) => void recenter([...new Set([...(selection ?? []), item.id])])} onItemLocate={(item) => void locate(item)} onItemStack={(item, operation: StackOperation) => void stackItems(items, [item.id], operation)} />)}
       <ItemDragOverlay dragId={dragId} />
     </SortableContext>
   </DndContext>;

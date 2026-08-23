@@ -25,6 +25,7 @@ import { capitalize } from "./helpers";
 import type { StackOperation } from "./stacking";
 import { useOwlbearStore } from "./useOwlbearStore";
 import { UNASSIGNED_ID, type VirtualLayerDefinition } from "./virtualLayers";
+import type { DropPosition } from "./dragPosition";
 
 const NATIVE_LAYER_HEADER_HEIGHT = 40;
 
@@ -33,6 +34,7 @@ interface Props {
   items: Item[];
   definitions: VirtualLayerDefinition[];
   groupOrder: string[];
+  groupDropPosition?: DropPosition;
   role: "GM" | "PLAYER";
   searching: boolean;
   onCreate: () => void;
@@ -79,7 +81,7 @@ export function ItemList(props: Props) {
   </Box>;
 }
 
-function Group({ definition, items, role, searching, onRename, onDelete, onGroupProperty, renderItems }: Props & { definition: VirtualLayerDefinition; renderItems: (items: Item[]) => React.ReactNode }) {
+function Group({ definition, items, role, searching, groupDropPosition, onRename, onDelete, onGroupProperty, renderItems }: Props & { definition: VirtualLayerDefinition; renderItems: (items: Item[]) => React.ReactNode }) {
   const [open, setOpen] = useState(true);
   const selected = useOwlbearStore((state) => items.some((item) => state.selection?.includes(item.id)));
   const unassigned = definition.id === UNASSIGNED_ID;
@@ -97,7 +99,7 @@ function Group({ definition, items, role, searching, onRename, onDelete, onGroup
     </Stack>}
   </ListItemButton>;
   return <>
-    <SortableItem itemId={unassigned ? `UG:${definition.obrLayer}` : `VL:${definition.id}`} disabled={searching} data={{ kind: "group", nativeLayer: definition.obrLayer, groupId: definition.id }} stickyTop={NATIVE_LAYER_HEADER_HEIGHT}>{row}</SortableItem>
+    <SortableItem itemId={unassigned ? `UG:${definition.obrLayer}` : `VL:${definition.id}`} disabled={searching} data={{ kind: "group", nativeLayer: definition.obrLayer, groupId: definition.id }} stickyTop={NATIVE_LAYER_HEADER_HEIGHT} indicatorPosition={groupDropPosition}>{row}</SortableItem>
     <Collapse in={open}><List component="div" dense><SortableItem itemId={`START:${definition.obrLayer}:${definition.id}`} disabled={searching} data={{ kind: "start", nativeLayer: definition.obrLayer, groupId: definition.id }} />{renderItems(items)}</List></Collapse>
   </>;
 }

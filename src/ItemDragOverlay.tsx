@@ -38,14 +38,16 @@ export const ItemDragOverlay = memo(function ({
           sx={{
             display: "flex",
             alignItems: "center",
-            width: "340px",
+            width: "260px",
             maxWidth: "calc(100vw - 24px)",
             minHeight: "44px",
             px: 1.5,
             borderRadius: "12px",
             color: "primary.contrastText",
             bgcolor: "primary.main",
+            opacity: 0.68,
             cursor: "grabbing",
+            pointerEvents: "none",
           }}
         >
           <DragIndicatorIcon sx={{ mr: 1, opacity: 0.8 }} />

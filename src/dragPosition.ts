@@ -10,3 +10,7 @@ export function getVerticalDropPosition(active: VerticalRect, over: VerticalRect
     ? "before"
     : "after";
 }
+
+export function getVerticalDropPositionAtPoint(y: number, over: VerticalRect): DropPosition {
+  return y < over.top + over.height / 2 ? "before" : "after";
+}

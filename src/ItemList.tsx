@@ -49,7 +49,7 @@ interface Props {
   onItemFocus: (item: Item) => void;
   onItemLocate: (item: Item) => void;
   onItemStack: (ids: string[], operation: StackOperation) => void;
-  onGroupStack: (ids: string[], operation: StackOperation) => void;
+  onGroupStack: (layer: Item["layer"], id: string, operation: StackOperation) => void;
 }
 
 export function ItemList(props: Props) {
@@ -96,7 +96,7 @@ function Group({ definition, items, role, searching, groupDropPosition, onRename
     <ListItemText primary={groupHeading} sx={{ minWidth: 0 }} primaryTypographyProps={{ noWrap: true, fontStyle: "italic" }} />
     {role === "GM" && <Stack direction="row" alignItems="center" flexShrink={0}>
       {!unassigned && <><Tooltip title="Edit"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onRename(definition); }}><EditIcon fontSize="small" /></IconButton></Tooltip><Tooltip title="Delete"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(definition); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip></>}
-      <SendMenuButton itemIds={items.map((item) => item.id)} onStack={(operation) => onGroupStack(items.map((item) => item.id), operation)} confirmLayerMove={definition.name} />
+      <SendMenuButton itemIds={items.map((item) => item.id)} allowStackWhenEmpty onStack={(operation) => onGroupStack(definition.obrLayer, definition.id, operation)} confirmLayerMove={definition.name} />
       <LayerPropertyControls items={items} onGroupProperty={onGroupProperty} />
     </Stack>}
   </ListItemButton>;

@@ -15,6 +15,7 @@ import {
   renameVirtualLayer,
   reorderVirtualLayer,
   reorderStackingGroup,
+  stackGroup,
   resolveGroupId,
   type VirtualLayerItem,
   type VirtualLayerState,
@@ -106,6 +107,19 @@ test("new virtual layers are inserted immediately above the current Unassigned p
   const moved = reorderStackingGroup(state, "PROP", UNASSIGNED_ID, 1);
   const created = createVirtualLayer(moved, "PROP", "Roads", "roads");
   assert.deepEqual(orderedGroupIds(created, "PROP"), ["roofs", "roads", UNASSIGNED_ID, "walls"]);
+});
+
+test("Send stacking actions move a virtual layer as a whole", () => {
+  assert.deepEqual(orderedGroupIds(stackGroup(state, "PROP", "walls", "front"), "PROP"), ["walls", "roofs", UNASSIGNED_ID]);
+  assert.deepEqual(orderedGroupIds(stackGroup(state, "PROP", "walls", "forward"), "PROP"), ["walls", "roofs", UNASSIGNED_ID]);
+  assert.deepEqual(orderedGroupIds(stackGroup(state, "PROP", "roofs", "backward"), "PROP"), ["walls", "roofs", UNASSIGNED_ID]);
+  assert.deepEqual(orderedGroupIds(stackGroup(state, "PROP", "roofs", "back"), "PROP"), ["walls", UNASSIGNED_ID, "roofs"]);
+});
+
+test("Send stacking actions support Unassigned and stop at group boundaries", () => {
+  assert.deepEqual(orderedGroupIds(stackGroup(state, "PROP", UNASSIGNED_ID, "front"), "PROP"), [UNASSIGNED_ID, "roofs", "walls"]);
+  assert.equal(stackGroup(state, "PROP", "roofs", "forward"), state);
+  assert.equal(stackGroup(state, "PROP", UNASSIGNED_ID, "backward"), state);
 });
 
 for (const [operation, expected] of Object.entries({ front: ["b", "c", "a"], forward: ["b", "a", "c"], backward: ["a", "b", "c"], back: ["a", "b", "c"] }) as Array<["front" | "forward" | "backward" | "back", string[]]>) {

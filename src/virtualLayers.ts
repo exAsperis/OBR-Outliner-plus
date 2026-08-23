@@ -121,6 +121,20 @@ export function reorderStackingGroup(state: VirtualLayerState, obrLayer: Item["l
   return applyGroupOrder(state, obrLayer, reordered);
 }
 
+export function stackGroup(state: VirtualLayerState, obrLayer: Item["layer"], id: string, operation: StackOperation): VirtualLayerState {
+  const groups = orderedGroupIds(state, obrLayer);
+  const currentIndex = groups.indexOf(id);
+  if (currentIndex < 0) throw new Error("Stacking group does not exist in this native layer.");
+  const targetIndex = operation === "front"
+    ? 0
+    : operation === "back"
+      ? groups.length - 1
+      : operation === "forward"
+        ? Math.max(0, currentIndex - 1)
+        : Math.min(groups.length - 1, currentIndex + 1);
+  return targetIndex === currentIndex ? state : reorderStackingGroup(state, obrLayer, id, targetIndex);
+}
+
 export function getAssignmentId(item: VirtualLayerItem): string | undefined {
   const value = item.metadata[VIRTUAL_LAYER_METADATA_KEY];
   if (!value || typeof value !== "object") return undefined;

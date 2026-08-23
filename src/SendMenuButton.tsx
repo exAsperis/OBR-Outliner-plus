@@ -27,11 +27,13 @@ export function SendMenuButton({
   onStack,
   confirmLayerMove,
   onOpenChange,
+  allowStackWhenEmpty = false,
 }: {
   itemIds: string[];
   onStack: (operation: StackOperation) => void;
   confirmLayerMove?: string;
   onOpenChange?: (open: boolean) => void;
+  allowStackWhenEmpty?: boolean;
 }) {
   const role = useOwlbearStore((state) => state.role);
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
@@ -50,7 +52,8 @@ export function SendMenuButton({
     onOpenChange?.(false);
   }
 
-  function stack(operation: StackOperation) {
+  function stack(event: React.MouseEvent, operation: StackOperation) {
+    stopEvent(event);
     onStack(operation);
     closeMenus();
   }
@@ -76,7 +79,7 @@ export function SendMenuButton({
       <IconButton
         aria-label="Send"
         size="small"
-        disabled={!itemIds.length}
+        disabled={!itemIds.length && !allowStackWhenEmpty}
         onPointerDown={stopEvent}
         onClick={(event) => { stopEvent(event); setMenuAnchor(event.currentTarget); onOpenChange?.(true); }}
       >
@@ -89,11 +92,11 @@ export function SendMenuButton({
       onClose={closeMenus}
       MenuListProps={{ dense: true, "aria-label": "Send" }}
     >
-      <MenuItem onClick={() => stack("front")}><ListItemIcon sx={iconSx}><SendToFrontIcon /></ListItemIcon><ListItemText primary="to Front" /></MenuItem>
-      <MenuItem onClick={() => stack("forward")}><ListItemIcon sx={iconSx}><ArrowUpwardIcon /></ListItemIcon><ListItemText primary="Forward" /></MenuItem>
-      <MenuItem onClick={() => stack("backward")}><ListItemIcon sx={iconSx}><ArrowDownwardIcon /></ListItemIcon><ListItemText primary="Backward" /></MenuItem>
-      <MenuItem onClick={() => stack("back")}><ListItemIcon sx={iconSx}><SendToBackIcon /></ListItemIcon><ListItemText primary="to Back" /></MenuItem>
-      <MenuItem onClick={(event) => { stopEvent(event); setLayerMenuAnchor(event.currentTarget); }}><ListItemIcon sx={iconSx}><LayerMoveIcon /></ListItemIcon><ListItemText primary="to Layer" /></MenuItem>
+      <MenuItem onClick={(event) => stack(event, "front")}><ListItemIcon sx={iconSx}><SendToFrontIcon /></ListItemIcon><ListItemText primary="to Front" /></MenuItem>
+      <MenuItem onClick={(event) => stack(event, "forward")}><ListItemIcon sx={iconSx}><ArrowUpwardIcon /></ListItemIcon><ListItemText primary="Forward" /></MenuItem>
+      <MenuItem onClick={(event) => stack(event, "backward")}><ListItemIcon sx={iconSx}><ArrowDownwardIcon /></ListItemIcon><ListItemText primary="Backward" /></MenuItem>
+      <MenuItem onClick={(event) => stack(event, "back")}><ListItemIcon sx={iconSx}><SendToBackIcon /></ListItemIcon><ListItemText primary="to Back" /></MenuItem>
+      <MenuItem disabled={!itemIds.length} onClick={(event) => { stopEvent(event); setLayerMenuAnchor(event.currentTarget); }}><ListItemIcon sx={iconSx}><LayerMoveIcon /></ListItemIcon><ListItemText primary="to Layer" /></MenuItem>
     </Menu>
     <Menu
       anchorEl={layerMenuAnchor}

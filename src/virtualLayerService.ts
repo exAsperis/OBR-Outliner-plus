@@ -16,6 +16,7 @@ import {
   renameVirtualLayer,
   reorderVirtualLayer,
   reorderStackingGroup,
+  stackGroup,
   stateFromMetadata,
   type VirtualLayerState,
 } from "./virtualLayers";
@@ -84,6 +85,16 @@ export function moveStackingGroup(obrLayer: Item["layer"], id: string, targetInd
   return serialized(async () => {
     const state = await getState();
     const next = reorderStackingGroup(state, obrLayer, id, targetIndex);
+    await setState(next);
+    await normalizeLayers([obrLayer], next);
+  });
+}
+
+export function stackVirtualLayer(obrLayer: Item["layer"], id: string, operation: StackOperation) {
+  return serialized(async () => {
+    const state = await getState();
+    const next = stackGroup(state, obrLayer, id, operation);
+    if (next === state) return;
     await setState(next);
     await normalizeLayers([obrLayer], next);
   });

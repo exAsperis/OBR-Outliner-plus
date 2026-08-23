@@ -19,7 +19,7 @@ ignored by Git so it cannot replace the production manifest accidentally:
 ```json
 {
   "name": "Outliner+ (Local)",
-  "version": "0.4.2-local",
+  "version": "0.4.3-local",
   "manifest_version": 1,
   "author": "es Asperis",
   "icon": "/logo.png",
@@ -28,7 +28,7 @@ ignored by Git so it cannot replace the production manifest accidentally:
   "action": {
     "title": "Outliner+ (Local)",
     "icon": "/icon.svg",
-    "popover": "/extension.html?v=0.4.2-local",
+    "popover": "/extension.html?v=0.4.3-local",
     "height": 129,
     "width": 375
   }

@@ -1,5 +1,8 @@
 import List from "@mui/material/List";
 import Stack from "@mui/material/Stack";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
+import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
 import OBR from "@owlbear-rodeo/sdk";
 import { useEffect, useRef, useState } from "react";
 import SimpleBar from "simplebar-react";
@@ -102,12 +105,25 @@ export function Outliner() {
       <Header
         title={searchExpanded ? "" : "Outliner+"}
         action={
-          <SearchField
-            value={search}
-            onChange={setSearch}
-            expanded={searchExpanded}
-            onExpand={setSearchExpanded}
-          />
+          <Stack direction="row" alignItems="center">
+            <SearchField
+              value={search}
+              onChange={setSearch}
+              expanded={searchExpanded}
+              onExpand={setSearchExpanded}
+            />
+            <Tooltip title="Help" disableInteractive>
+              <IconButton
+                component="a"
+                href={new URL("/", window.location.origin).href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Help"
+              >
+                <HelpIcon />
+              </IconButton>
+            </Tooltip>
+          </Stack>
         }
       />
       <SimpleBar style={{ maxHeight: "calc(100vh - 64px)" }}>

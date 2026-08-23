@@ -40,14 +40,14 @@ OBR.onReady(async () => {
     id: SEND_CONTEXT_MENU_ID,
     icons: [
       {
-        icon: "/send.svg?v=0.4.2",
+        icon: "/send.svg?v=0.4.3",
         label: "Send…",
         filter: { permissions: ["UPDATE"] },
       },
     ],
     embed: {
       url: new URL(
-        "/send-menu.html?v=0.4.2",
+        "/send-menu.html?v=0.4.3",
         window.location.origin
       ).href,
       height: 168,

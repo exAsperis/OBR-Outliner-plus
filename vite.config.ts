@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import { cpSync, readFileSync, writeFileSync } from 'node:fs'
 
 const packageVersion = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')).version as string
-const beta = process.env.DEPLOYMENT_ENVIRONMENT === 'beta'
+const beta = process.env.OUTLINER_BUILD_CHANNEL === 'beta'
 const publicOrigin = beta ? 'https://outliner-plus-beta.ex-asperis.com' : 'https://outliner-plus.ex-asperis.com'
 const releaseVersion = beta ? `${packageVersion}-beta` : packageVersion
 

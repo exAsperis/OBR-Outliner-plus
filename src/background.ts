@@ -42,7 +42,7 @@ OBR.onReady(async () => {
       {
         icon: "/send.svg?v=0.4.3",
         label: "Send…",
-        filter: { permissions: ["UPDATE"] },
+        filter: { permissions: ["UPDATE"], roles: ["GM"] },
       },
     ],
     embed: {

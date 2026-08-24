@@ -25,9 +25,11 @@ import LocateIcon from "@mui/icons-material/CenterFocusStrongRounded";
 import type { StackOperation } from "./stacking";
 import { getItemActionReservedSlots, getItemActionVisibility } from "./itemActionVisibility";
 import { SendMenuButton } from "./SendMenuButton";
-import { getEffectiveItemRule, getItemParentRule, getItemRule, itemInheritanceLabel, inheritanceVisualState, type StatefulProperty } from "./stateInheritance";
-import { setItemInheritedProperty, toggleItemInheritance } from "./virtualLayerService";
+import { getItemParentRule, getItemRule, hasInstructions, itemInheritanceLabel, inheritanceVisualState, type StatefulProperty } from "./stateInheritance";
+import { setItemTransparency, toggleItemInheritance } from "./virtualLayerService";
 import { InheritanceStateIcon } from "./InheritanceStateIcon";
+import { isItemTransparent } from "./transparentState";
+import { OpaqueIcon, TransparentIcon } from "./icons/other/TransparencyIcons";
 
 const ACTION_SLOT_SIZE = 30;
 
@@ -68,8 +70,9 @@ export const ItemListItem = memo(function ({
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const localRule = getItemRule(item);
   const parentRule = getItemParentRule(item, virtualLayers);
-  const effectiveRule = getEffectiveItemRule(item, virtualLayers);
-  const inheritedOnly = Boolean(parentRule && !localRule);
+  const independent = Boolean(localRule);
+  const effectiveRule = independent ? {} : parentRule;
+  const transparent = isItemTransparent(item);
 
   const [ref, inView] = useInView();
 
@@ -85,7 +88,8 @@ export const ItemListItem = memo(function ({
     hovering,
     focusWithin,
     layerMenuOpen: sendMenuOpen,
-    inheritanceActive: Boolean(effectiveRule),
+    inheritanceActive: independent || hasInstructions(effectiveRule),
+    transparent,
     disableHit: item.disableHit,
     locked: item.locked,
     visible: item.visible,
@@ -109,17 +113,18 @@ export const ItemListItem = memo(function ({
   }
 
   function handlePropertyClick(property: StatefulProperty) {
-    const current = effectiveRule?.[property] ?? (property === "disableHit" ? item.disableHit === true : item[property]);
-    if (localRule) void setItemInheritedProperty(item, property, !current);
-    else if (!inheritedOnly) void OBR.scene.items.updateItems([item], (items) => { items[0][property] = !current; });
+    const current = effectiveRule[property] ?? (property === "transparent" ? transparent : property === "disableHit" ? item.disableHit === true : item[property]);
+    if (property === "transparent") void setItemTransparency(item, !current);
+    else void OBR.scene.items.updateItems([item], (items) => { items[0][property] = !current; });
   }
 
-  const inheritanceState = inheritanceVisualState("item", Boolean(localRule), Boolean(parentRule));
+  const inheritanceState = inheritanceVisualState("item", hasInstructions(parentRule), independent);
   const inheritanceColor = inheritanceState === "enabled" ? "warning" : inheritanceState === "disabled" ? "default" : "error";
-  const inheritanceActionLabel = itemInheritanceLabel(Boolean(localRule), Boolean(parentRule));
-  const stateColor = (property: StatefulProperty) => localRule && parentRule && localRule[property] !== parentRule[property] ? "error" : effectiveRule ? "warning" : "default";
-  const disabledInheritedSx = inheritedOnly ? { "&.Mui-disabled": { color: "warning.main" } } : undefined;
-  const displayed = effectiveRule ?? { disableHit: item.disableHit === true, locked: item.locked, visible: item.visible };
+  const inheritanceActionLabel = itemInheritanceLabel(independent);
+  const isInherited = (property: StatefulProperty) => !independent && Object.prototype.hasOwnProperty.call(parentRule, property);
+  const stateColor = (property: StatefulProperty) => isInherited(property) ? "warning" : "default";
+  const disabledInheritedSx = (property: StatefulProperty) => isInherited(property) ? { "&.Mui-disabled": { color: "warning.main" } } : undefined;
+  const displayed = { disableHit: item.disableHit === true, locked: item.locked, visible: item.visible, transparent, ...effectiveRule };
 
   return (
     <ListItem
@@ -164,6 +169,21 @@ export const ItemListItem = memo(function ({
                 </IconButton>
               </Tooltip>
             ) : <EmptyActionSlot />}
+            {actionVisibility.showTransparent ? (
+              <Tooltip title={displayed.transparent ? "Restore item" : "Make transparent"} disableInteractive>
+                <IconButton
+                  aria-label={displayed.transparent ? "Restore item" : "Make transparent"}
+                  color={stateColor("transparent")}
+                  disabled={isInherited("transparent")}
+                  sx={disabledInheritedSx("transparent")}
+                  size="small"
+                  onPointerDown={stopActionEvent}
+                  onClick={(event) => handleActionClick(event, () => handlePropertyClick("transparent"))}
+                >
+                  {displayed.transparent ? <TransparentIcon fontSize="small" /> : <OpaqueIcon fontSize="small" />}
+                </IconButton>
+              </Tooltip>
+            ) : <EmptyActionSlot />}
             {actionVisibility.showDisableHit ? (
               <Tooltip
                 title={displayed.disableHit ? "Enable clicks" : "Disable clicks"}
@@ -172,8 +192,8 @@ export const ItemListItem = memo(function ({
                 <IconButton
                   aria-label={displayed.disableHit ? "Enable clicks" : "Disable clicks"}
                   color={stateColor("disableHit")}
-                  disabled={inheritedOnly}
-                  sx={disabledInheritedSx}
+                  disabled={isInherited("disableHit")}
+                  sx={disabledInheritedSx("disableHit")}
                   size="small"
                   onPointerDown={stopActionEvent}
                   onClick={(event) => handleActionClick(event, () => handlePropertyClick("disableHit"))}
@@ -194,8 +214,8 @@ export const ItemListItem = memo(function ({
                 <IconButton
                   aria-label={displayed.locked ? "Unlock" : "Lock"}
                   color={stateColor("locked")}
-                  disabled={inheritedOnly}
-                  sx={disabledInheritedSx}
+                  disabled={isInherited("locked")}
+                  sx={disabledInheritedSx("locked")}
                   size="small"
                   onPointerDown={stopActionEvent}
                   onClick={(event) => handleActionClick(event, () => handlePropertyClick("locked"))}
@@ -225,8 +245,8 @@ export const ItemListItem = memo(function ({
                   size="small"
                   aria-label={displayed.visible ? "Hide" : "Show"}
                   color={stateColor("visible")}
-                  disabled={inheritedOnly}
-                  sx={disabledInheritedSx}
+                  disabled={isInherited("visible")}
+                  sx={disabledInheritedSx("visible")}
                   onPointerDown={stopActionEvent}
                   onClick={(event) =>
                     handleActionClick(event, () => handlePropertyClick("visible"))

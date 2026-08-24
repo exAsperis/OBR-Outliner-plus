@@ -14,16 +14,21 @@ export interface InheritedItemState {
   disableHit: boolean;
   locked: boolean;
   visible: boolean;
+  transparent: boolean;
 }
 
+export type StatefulProperty = keyof InheritedItemState;
+export type EnforcedItemState = Partial<InheritedItemState>;
+export type VirtualInheritance = { mode: "pass-through" } | { mode: "independent"; enforce: EnforcedItemState };
+
 export interface StateInheritanceRules {
-  native?: Partial<Record<Item["layer"], InheritedItemState>>;
-  virtual?: Record<string, InheritedItemState>;
-  unassigned?: Partial<Record<Item["layer"], InheritedItemState>>;
+  native?: Partial<Record<Item["layer"], EnforcedItemState>>;
+  virtual?: Record<string, VirtualInheritance>;
+  unassigned?: Partial<Record<Item["layer"], VirtualInheritance>>;
 }
 
 export interface VirtualLayerState {
-  version: 1;
+  version: 2;
   layers: VirtualLayerDefinition[];
   unassignedOrders?: Partial<Record<Item["layer"], number>>;
   inheritance?: StateInheritanceRules;
@@ -31,73 +36,84 @@ export interface VirtualLayerState {
 
 export type VirtualLayerItem = Pick<Item, "id" | "layer" | "zIndex" | "metadata">;
 export const UNASSIGNED_ID = "__unassigned__";
-export const EMPTY_VIRTUAL_LAYER_STATE: VirtualLayerState = { version: 1, layers: [] };
+export const EMPTY_VIRTUAL_LAYER_STATE: VirtualLayerState = { version: 2, layers: [] };
+export const STATEFUL_PROPERTIES: StatefulProperty[] = ["transparent", "disableHit", "locked", "visible"];
 
-const isLayer = (value: unknown): value is Item["layer"] =>
-  typeof value === "string" && [
-    "MAP", "GRID", "DRAWING", "PROP", "MOUNT", "CHARACTER", "ATTACHMENT",
-    "NOTE", "TEXT", "RULER", "FOG", "POINTER", "POST_PROCESS", "CONTROL", "POPOVER",
-  ].includes(value);
+const isLayer = (value: unknown): value is Item["layer"] => typeof value === "string" && [
+  "MAP", "GRID", "DRAWING", "PROP", "MOUNT", "CHARACTER", "ATTACHMENT",
+  "NOTE", "TEXT", "RULER", "FOG", "POINTER", "POST_PROCESS", "CONTROL", "POPOVER",
+].includes(value);
 
-export function parseVirtualLayerState(value: unknown): VirtualLayerState {
-  if (!value || typeof value !== "object" || (value as { version?: unknown }).version !== 1 ||
-      !Array.isArray((value as { layers?: unknown }).layers)) return EMPTY_VIRTUAL_LAYER_STATE;
-  const layers = (value as { layers: unknown[] }).layers.flatMap((entry) => {
-    if (!entry || typeof entry !== "object") return [];
-    const candidate = entry as Partial<VirtualLayerDefinition>;
-    if (typeof candidate.id !== "string" || !candidate.id || typeof candidate.name !== "string" ||
-        !candidate.name.trim() || !isLayer(candidate.obrLayer) ||
-        typeof candidate.order !== "number" || !Number.isFinite(candidate.order)) return [];
-    return [{ id: candidate.id, name: candidate.name.trim(), obrLayer: candidate.obrLayer, order: candidate.order }];
-  });
-  const rawOrders = (value as { unassignedOrders?: unknown }).unassignedOrders;
-  const unassignedOrders: Partial<Record<Item["layer"], number>> = {};
-  if (rawOrders && typeof rawOrders === "object") {
-    for (const [layer, order] of Object.entries(rawOrders)) {
-      if (isLayer(layer) && typeof order === "number" && Number.isFinite(order)) unassignedOrders[layer] = order;
-    }
-  }
-  const inheritance = parseInheritanceRules((value as { inheritance?: unknown }).inheritance, layers);
-  return {
-    version: 1,
-    layers,
-    ...(Object.keys(unassignedOrders).length ? { unassignedOrders } : {}),
-    ...(inheritance ? { inheritance } : {}),
-  };
-}
-
-function parseInheritedItemState(value: unknown): InheritedItemState | undefined {
+function parseFullState(value: unknown): InheritedItemState | undefined {
   if (!value || typeof value !== "object") return undefined;
   const candidate = value as Partial<InheritedItemState>;
-  return typeof candidate.disableHit === "boolean" && typeof candidate.locked === "boolean" &&
-    typeof candidate.visible === "boolean" ? {
-      disableHit: candidate.disableHit,
-      locked: candidate.locked,
-      visible: candidate.visible,
-    } : undefined;
+  return typeof candidate.disableHit === "boolean" && typeof candidate.locked === "boolean" && typeof candidate.visible === "boolean"
+    ? { disableHit: candidate.disableHit, locked: candidate.locked, visible: candidate.visible,
+        transparent: typeof candidate.transparent === "boolean" ? candidate.transparent : false }
+    : undefined;
 }
 
-function parseInheritanceRules(value: unknown, layers: VirtualLayerDefinition[]): StateInheritanceRules | undefined {
+function parseEnforcedState(value: unknown): EnforcedItemState | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const parsed: EnforcedItemState = {};
+  for (const property of STATEFUL_PROPERTIES) {
+    const candidate = (value as Partial<InheritedItemState>)[property];
+    if (typeof candidate === "boolean") parsed[property] = candidate;
+  }
+  return parsed;
+}
+
+function parseVirtualInheritance(value: unknown): VirtualInheritance | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const candidate = value as { mode?: unknown; enforce?: unknown };
+  if (candidate.mode === "pass-through") return { mode: "pass-through" };
+  if (candidate.mode === "independent") return { mode: "independent", enforce: parseEnforcedState(candidate.enforce) ?? {} };
+  return undefined;
+}
+
+function parseInheritanceRules(value: unknown, layers: VirtualLayerDefinition[], legacy: boolean): StateInheritanceRules | undefined {
   if (!value || typeof value !== "object") return undefined;
   const raw = value as { native?: unknown; virtual?: unknown; unassigned?: unknown };
   const native: NonNullable<StateInheritanceRules["native"]> = {};
   const virtual: NonNullable<StateInheritanceRules["virtual"]> = {};
   const unassigned: NonNullable<StateInheritanceRules["unassigned"]> = {};
   if (raw.native && typeof raw.native === "object") for (const [layer, rule] of Object.entries(raw.native)) {
-    const parsed = parseInheritedItemState(rule);
-    if (isLayer(layer) && parsed) native[layer] = parsed;
+    const parsed = legacy ? parseFullState(rule) : parseEnforcedState(rule);
+    if (isLayer(layer) && parsed && Object.keys(parsed).length) native[layer] = parsed;
   }
   if (raw.virtual && typeof raw.virtual === "object") for (const [id, rule] of Object.entries(raw.virtual)) {
-    const parsed = parseInheritedItemState(rule);
-    if (layers.some((layer) => layer.id === id) && parsed) virtual[id] = parsed;
+    const parsed = legacy ? parseFullState(rule) : parseVirtualInheritance(rule);
+    if (layers.some((layer) => layer.id === id) && parsed) virtual[id] = legacy
+      ? { mode: "independent", enforce: parsed as InheritedItemState } : parsed as VirtualInheritance;
   }
   if (raw.unassigned && typeof raw.unassigned === "object") for (const [layer, rule] of Object.entries(raw.unassigned)) {
-    const parsed = parseInheritedItemState(rule);
-    if (isLayer(layer) && parsed) unassigned[layer] = parsed;
+    const parsed = legacy ? parseFullState(rule) : parseVirtualInheritance(rule);
+    if (isLayer(layer) && parsed) unassigned[layer] = legacy
+      ? { mode: "independent", enforce: parsed as InheritedItemState } : parsed as VirtualInheritance;
   }
   return Object.keys(native).length || Object.keys(virtual).length || Object.keys(unassigned).length
     ? { ...(Object.keys(native).length ? { native } : {}), ...(Object.keys(virtual).length ? { virtual } : {}), ...(Object.keys(unassigned).length ? { unassigned } : {}) }
     : undefined;
+}
+
+export function parseVirtualLayerState(value: unknown): VirtualLayerState {
+  if (!value || typeof value !== "object" || ![1, 2].includes((value as { version?: number }).version ?? 0) ||
+      !Array.isArray((value as { layers?: unknown }).layers)) return EMPTY_VIRTUAL_LAYER_STATE;
+  const version = (value as { version: 1 | 2 }).version;
+  const layers = (value as { layers: unknown[] }).layers.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const candidate = entry as Partial<VirtualLayerDefinition>;
+    if (typeof candidate.id !== "string" || !candidate.id || typeof candidate.name !== "string" || !candidate.name.trim() ||
+        !isLayer(candidate.obrLayer) || typeof candidate.order !== "number" || !Number.isFinite(candidate.order)) return [];
+    return [{ id: candidate.id, name: candidate.name.trim(), obrLayer: candidate.obrLayer, order: candidate.order }];
+  });
+  const rawOrders = (value as { unassignedOrders?: unknown }).unassignedOrders;
+  const unassignedOrders: Partial<Record<Item["layer"], number>> = {};
+  if (rawOrders && typeof rawOrders === "object") for (const [layer, order] of Object.entries(rawOrders)) {
+    if (isLayer(layer) && typeof order === "number" && Number.isFinite(order)) unassignedOrders[layer] = order;
+  }
+  const inheritance = parseInheritanceRules((value as { inheritance?: unknown }).inheritance, layers, version === 1);
+  return { version: 2, layers, ...(Object.keys(unassignedOrders).length ? { unassignedOrders } : {}), ...(inheritance ? { inheritance } : {}) };
 }
 
 export function stateFromMetadata(metadata: Record<string, unknown>) {
@@ -115,12 +131,6 @@ export function linkedVirtualLayers(state: VirtualLayerState, id: string) {
 
 export function isLinkedVirtualLayer(state: VirtualLayerState, id: string) {
   return linkedVirtualLayers(state, id).length > 1;
-}
-
-export function setVirtualLayerRules(state: VirtualLayerState, ids: Iterable<string>, rule: InheritedItemState): VirtualLayerState {
-  const virtual = { ...state.inheritance?.virtual };
-  for (const id of ids) if (state.layers.some((layer) => layer.id === id)) virtual[id] = rule;
-  return { ...state, inheritance: { ...state.inheritance, virtual } };
 }
 
 function validateName(name: string) {

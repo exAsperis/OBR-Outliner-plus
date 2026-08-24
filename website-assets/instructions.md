@@ -25,7 +25,7 @@ Drag a virtual-layer heading to change its position, or use its Send menu. Drag 
 
 Virtual layers do not override Owlbear Rodeo's layer order. For example, an item in the Props layer cannot be placed above an item in the Characters layer by using a virtual layer.
 
-Virtual layers with the same name are linked across the Scene, even when they belong to different Owlbear layers. A chain glyph appears beside each linked name. Creating or renaming a layer to a matching name copies the existing linked state, and later click-through, locked, or visibility changes apply to every layer in that link. Rename a linked layer to a different name to unlink it while preserving its current state.
+Virtual layers with the same name are linked across the Scene, even when they belong to different Owlbear layers. A chain glyph appears beside each linked name. A directly controlled Transparent, Click-through, Locked, or Visible value propagates to every linked layer where that specific property is not currently supplied by an inheritance instruction. The linked layer's overall Pass-thru or Independent mode does not otherwise matter, and Enforce instructions for other properties do not interfere. The value is applied directly to all child items in each participating layer. Enforce switches and instruction values remain local and never propagate through links. Creating, renaming, or linking a layer never copies its inheritance configuration. Rename a linked layer to a different name to unlink it while preserving its current state.
 
 ## Quick actions
 
@@ -35,15 +35,19 @@ Game Masters can use the controls in the Outliner+ panel to manage Scene items. 
 
 Creates a virtual layer inside the selected Owlbear layer. Creating the first virtual layer also displays the Unassigned group, which can be reordered like a virtual layer.
 
-### State inheritance and overrides
+### State inheritance
 
-The inheritance control appears immediately to the left of Click-through on Owlbear layers, virtual layers, Unassigned groups, and individual items. Enabling inheritance stores that level's click-through, locked, and visibility values and applies them continuously to its contents, including items added or moved there later. On an item with no parent rule, the same control uses *Block inheritance* and *Allow inheritance* to describe creating or removing its explicit item-level block.
+The inheritance control appears immediately to the left of Transparent on Owlbear layers, virtual layers, Unassigned groups, and individual items. It manages four properties independently: Transparent, Click-through, Locked, and Visible.
 
-Inheritance cascades from an Owlbear layer to its virtual or Unassigned groups and then to individual items. The inheritance glyph shows the entire path: gray with a slash means no inheritance rule applies, gold means inheritance flows normally, red with a break at the virtual-layer step means that virtual or Unassigned group blocks its parent, and red with a break at the item step means that item blocks its parent. Inherited state buttons are disabled; select *Override inherited state* to create an editable local rule. Removing an override returns that level to its nearest parent rule.
+On an Owlbear-layer heading, the control opens an **Enforce** menu with a switch for each property. Enabling a switch captures the value currently shown by that heading and continuously supplies it to eligible descendants, including items added or moved there later. Only enabled properties are instructions; the remaining state controls continue to work normally.
 
-Linked virtual layers always enforce their shared state, blocking inheritance from their parent Owlbear layers. Their inheritance controls are disabled until they are unlinked. Individual child items can still override the linked state normally.
+Virtual layers and Unassigned groups use one of two modes. **Pass thru** accepts the parent Owlbear layer's instructions and forwards them unchanged. **Independent** blocks every parent instruction and reveals its own four Enforce switches. A newly Independent group starts with no properties enforced. Its unenforced properties remain direct bulk controls.
 
-When no parent rule exists, inheritance captures the states shown by the heading. Empty layers start clickable, unlocked, and visible. Mixed ordinary states use blue rather than gold. Bulk state actions skip children that have more-specific overrides.
+On an item, the inheritance button directly switches between allowing applicable parent instructions and **Independent**. An Independent item blocks every parent instruction, including properties for which its parent has no replacement. Allowing inheritance again immediately accepts the effective parent subset.
+
+An instructed state control edits the value supplied by the layer that enforces it. A property received by a Pass-thru layer or an inheriting item is disabled there. Uninstructed properties remain directly editable. Turning off an ordinary instruction leaves items at their last applied value; turning off Transparent restores each item's saved pre-transparency scale, visibility, clickability, and image-label opacity.
+
+The inheritance glyph is gold when instructions are enforced or actively passed through, gray and slashed when none apply, and red with a broken virtual-layer or item step for Independent mode. Mixed direct values use the existing blue state glyphs. Empty groups can still configure Enforce instructions even though uninstructed bulk controls are unavailable.
 
 ### Disable / Enable clicks
 

@@ -23,7 +23,7 @@ import {
   type VirtualLayerState,
 } from "../src/virtualLayers.ts";
 
-const state: VirtualLayerState = { version: 1, layers: [
+const state: VirtualLayerState = { version: 2, layers: [
   { id: "roofs", name: "Roofs", obrLayer: "PROP", order: 0 },
   { id: "walls", name: "Walls", obrLayer: "PROP", order: 1 },
   { id: "pcs", name: "PCs", obrLayer: "CHARACTER", order: 0 },

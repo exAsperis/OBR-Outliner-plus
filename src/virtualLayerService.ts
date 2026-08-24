@@ -13,29 +13,28 @@ import {
   createVirtualLayer,
   deleteVirtualLayer,
   getAssignmentId,
-  isLinkedVirtualLayer,
-  linkedVirtualLayers,
   parseVirtualLayerState,
   renameVirtualLayer,
-  resolveGroupId,
-  setVirtualLayerRules,
   reorderVirtualLayer,
   reorderStackingGroup,
   stackGroup,
   stateFromMetadata,
+  type EnforcedItemState,
+  type StatefulProperty,
+  type VirtualInheritance,
   type VirtualLayerState,
 } from "./virtualLayers";
 import {
   calculateInheritanceUpdates,
-  captureAggregateState,
-  getGroupRule,
-  getItemParentRule,
+  directGroupItemIds,
+  directNativeItemIds,
+  getGroupEffectiveInstructions,
+  getGroupInheritance,
   getItemRule,
   getNativeRule,
-  itemState,
-  type StatefulProperty,
+  linkedDirectPropertyItemIds,
 } from "./stateInheritance";
-import type { InheritedItemState } from "./virtualLayers";
+import { activateTransparency, getTransparentState, needsTransparencyEnforcement, restoreTransparency } from "./transparentState";
 
 let queue: Promise<void> = Promise.resolve();
 let writing = false;
@@ -76,11 +75,8 @@ async function normalizeLayers(layers: Iterable<Item["layer"]>, state?: VirtualL
 export function addVirtualLayer(obrLayer: Item["layer"], name: string) {
   return serialized(async () => {
     const state = await getState();
-    const items = await OBR.scene.items.getItems();
     const id = `vl_${crypto.randomUUID()}`;
-    let next = createVirtualLayer(state, obrLayer, name, id);
-    const source = linkedVirtualLayers(next, id).find((layer) => layer.id !== id);
-    if (source) next = linkMatchingLayers(next, source.id, items);
+    const next = createVirtualLayer(state, obrLayer, name, id);
     await setState(next);
     await enforceStateInheritance(next);
     await normalizeLayers([obrLayer], next);
@@ -90,10 +86,7 @@ export function addVirtualLayer(obrLayer: Item["layer"], name: string) {
 export function updateVirtualLayerName(id: string, name: string) {
   return serialized(async () => {
     const state = await getState();
-    const items = await OBR.scene.items.getItems();
-    let next = renameVirtualLayer(state, id, name);
-    const source = linkedVirtualLayers(next, id).find((layer) => layer.id !== id);
-    if (source) next = linkMatchingLayers(next, source.id, items);
+    const next = renameVirtualLayer(state, id, name);
     await setState(next);
     await enforceStateInheritance(next);
   });
@@ -123,82 +116,118 @@ export async function enforceStateInheritance(state?: VirtualLayerState) {
   const currentState = state ?? await getState();
   const items = await OBR.scene.items.getItems();
   const updates = calculateInheritanceUpdates(items, currentState);
-  if (updates.size) await OBR.scene.items.updateItems([...updates.keys()], (draft) => {
+  const directUpdates = items.filter((item) => getTransparentState(item)?.source === "direct" && needsTransparencyEnforcement(item));
+  const updateIds = new Set([...updates.keys(), ...directUpdates.map((item) => item.id)]);
+  if (updateIds.size) await OBR.scene.items.updateItems([...updateIds], (draft) => {
     for (const item of draft) {
-      const rule = updates.get(item.id);
-      if (!rule) continue;
-      item.disableHit = rule.disableHit;
-      item.locked = rule.locked;
-      item.visible = rule.visible;
+      if (!updates.has(item.id)) {
+        activateTransparency(item, "direct");
+        continue;
+      }
+      const update = updates.get(item.id);
+      if (!update) continue;
+      const instructions = update.instructions ?? {};
+      if (getItemRule(item)?.legacy) item.metadata[ITEM_INHERITANCE_METADATA_KEY] = { independent: true };
+      if (update.preserveTransparency && getTransparentState(item)) {
+        activateTransparency(item, "direct");
+        continue;
+      }
+      if (Object.prototype.hasOwnProperty.call(instructions, "transparent")) {
+        if (instructions.transparent) activateTransparency(item, "inherited");
+        else restoreTransparency(item);
+      } else if (getTransparentState(item)?.source === "inherited") restoreTransparency(item);
+      if (!instructions.transparent) {
+        if (typeof instructions.disableHit === "boolean") item.disableHit = instructions.disableHit;
+        if (typeof instructions.visible === "boolean") item.visible = instructions.visible;
+      }
+      if (typeof instructions.locked === "boolean") item.locked = instructions.locked;
     }
   });
 }
 
 export type RuleScope = { kind: "native"; layer: Item["layer"] } | { kind: "group"; layer: Item["layer"]; groupId: string };
 
-function localRule(state: VirtualLayerState, scope: RuleScope) {
-  return scope.kind === "native" ? getNativeRule(state, scope.layer) : getGroupRule(state, scope.layer, scope.groupId);
-}
-
-function parentRule(state: VirtualLayerState, scope: RuleScope) {
-  return scope.kind === "group" ? getNativeRule(state, scope.layer) : undefined;
-}
-
-function withRule(state: VirtualLayerState, scope: RuleScope, rule?: InheritedItemState): VirtualLayerState {
+function withNativeInstructions(state: VirtualLayerState, layer: Item["layer"], enforce: EnforcedItemState): VirtualLayerState {
   const inheritance = { ...state.inheritance };
-  if (scope.kind === "native") {
-    const native = { ...inheritance.native };
-    if (rule) native[scope.layer] = rule; else delete native[scope.layer];
-    if (Object.keys(native).length) inheritance.native = native; else delete inheritance.native;
-  } else if (scope.groupId === "__unassigned__") {
-    const unassigned = { ...inheritance.unassigned };
-    if (rule) unassigned[scope.layer] = rule; else delete unassigned[scope.layer];
-    if (Object.keys(unassigned).length) inheritance.unassigned = unassigned; else delete inheritance.unassigned;
-  } else {
-    const virtual = { ...inheritance.virtual };
-    if (rule) virtual[scope.groupId] = rule; else delete virtual[scope.groupId];
-    if (Object.keys(virtual).length) inheritance.virtual = virtual; else delete inheritance.virtual;
-  }
+  const native = { ...inheritance.native };
+  if (Object.keys(enforce).length) native[layer] = enforce; else delete native[layer];
+  if (Object.keys(native).length) inheritance.native = native; else delete inheritance.native;
   return { ...state, inheritance: inheritance.native || inheritance.virtual || inheritance.unassigned ? inheritance : undefined };
 }
 
-function displayedGroupState(state: VirtualLayerState, id: string, items: Item[]): InheritedItemState {
-  const definition = state.layers.find((layer) => layer.id === id);
-  if (!definition) throw new Error("Virtual layer does not exist.");
-  const eligible = items.filter((item) => item.layer === definition.obrLayer &&
-    resolveGroupId(item, state) === id && !getItemRule(item));
-  return getGroupRule(state, definition.obrLayer, id) ??
-    getNativeRule(state, definition.obrLayer) ?? captureAggregateState(eligible);
+function withGroupInheritance(state: VirtualLayerState, scope: Extract<RuleScope, { kind: "group" }>, config: VirtualInheritance): VirtualLayerState {
+  const inheritance = { ...state.inheritance };
+  if (scope.groupId === "__unassigned__") {
+    const unassigned = { ...inheritance.unassigned };
+    unassigned[scope.layer] = config;
+    inheritance.unassigned = unassigned;
+  } else {
+    const virtual = { ...inheritance.virtual };
+    virtual[scope.groupId] = config;
+    inheritance.virtual = virtual;
+  }
+  return { ...state, inheritance };
 }
 
-function linkMatchingLayers(state: VirtualLayerState, sourceId: string, items: Item[]) {
-  const linked = linkedVirtualLayers(state, sourceId);
-  if (linked.length < 2) return state;
-  const rule = displayedGroupState(state, sourceId, items);
-  return setVirtualLayerRules(state, linked.map((layer) => layer.id), rule);
-}
-
-export function toggleScopeInheritance(scope: RuleScope, fallback: InheritedItemState) {
+export function setGroupInheritanceMode(scope: Extract<RuleScope, { kind: "group" }>, mode: VirtualInheritance["mode"]) {
   return serialized(async () => {
     const state = await getState();
-    if (scope.kind === "group" && isLinkedVirtualLayer(state, scope.groupId)) return;
-    const next = withRule(state, scope, localRule(state, scope) ? undefined : parentRule(state, scope) ?? fallback);
+    const next = withGroupInheritance(state, scope, mode === "pass-through" ? { mode } : { mode, enforce: {} });
     await setState(next);
     await enforceStateInheritance(next);
   });
 }
 
-export function setScopeInheritedProperty(scope: RuleScope, property: StatefulProperty, value: boolean) {
+export function setScopeEnforcement(scope: RuleScope, property: StatefulProperty, enabled: boolean, capturedValue: boolean) {
   return serialized(async () => {
     const state = await getState();
-    const current = localRule(state, scope);
-    if (!current) return;
-    const targets = scope.kind === "group" ? linkedVirtualLayers(state, scope.groupId) : [];
-    const nextRule = { ...current, [property]: value };
-    const next = targets.length > 1
-      ? setVirtualLayerRules(state, targets.map((layer) => layer.id), nextRule)
-      : withRule(state, scope, nextRule);
+    let next: VirtualLayerState;
+    if (scope.kind === "native") {
+      const enforce = { ...getNativeRule(state, scope.layer) };
+      if (enabled) enforce[property] = capturedValue; else delete enforce[property];
+      next = withNativeInstructions(state, scope.layer, enforce);
+    } else {
+      const config = getGroupInheritance(state, scope.layer, scope.groupId);
+      if (config.mode !== "independent") return;
+      const enforce = { ...config.enforce };
+      if (enabled) enforce[property] = capturedValue; else delete enforce[property];
+      next = withGroupInheritance(state, scope, { mode: "independent", enforce });
+    }
     await setState(next);
+    await enforceStateInheritance(next);
+  });
+}
+
+export function setScopeProperty(scope: RuleScope, property: StatefulProperty, value: boolean) {
+  return serialized(async () => {
+    const state = await getState();
+    const items = await OBR.scene.items.getItems();
+    let next = state;
+    const directIds = new Set<string>();
+    if (scope.kind === "native") {
+      const enforce = getNativeRule(state, scope.layer);
+      if (Object.prototype.hasOwnProperty.call(enforce, property)) next = withNativeInstructions(state, scope.layer, { ...enforce, [property]: value });
+      else directNativeItemIds(items, state, scope.layer).forEach((id) => directIds.add(id));
+    } else {
+      const config = getGroupInheritance(state, scope.layer, scope.groupId);
+      if (config.mode === "independent" && Object.prototype.hasOwnProperty.call(config.enforce, property)) {
+        next = withGroupInheritance(next, scope, { ...config, enforce: { ...config.enforce, [property]: value } });
+      } else if (Object.prototype.hasOwnProperty.call(getGroupEffectiveInstructions(state, scope.layer, scope.groupId), property)) {
+        return;
+      } else if (scope.groupId !== "__unassigned__") {
+        linkedDirectPropertyItemIds(items, state, scope.groupId, property).forEach((id) => directIds.add(id));
+      } else {
+        directGroupItemIds(items, state, scope.layer, scope.groupId).forEach((id) => directIds.add(id));
+      }
+    }
+    if (next !== state) await setState(next);
+    if (directIds.size) await OBR.scene.items.updateItems([...directIds], (draft) => {
+      for (const item of draft) {
+        if (property === "transparent") {
+          if (value) activateTransparency(item, "direct"); else restoreTransparency(item);
+        } else item[property] = value;
+      }
+    });
     await enforceStateInheritance(next);
   });
 }
@@ -206,30 +235,16 @@ export function setScopeInheritedProperty(scope: RuleScope, property: StatefulPr
 export function toggleItemInheritance(item: Item) {
   return serialized(async () => {
     const state = await getState();
-    const local = getItemRule(item);
-    const parent = getItemParentRule(item, state);
-    const next = parent ?? itemState(item);
+    const independent = Boolean(getItemRule(item));
     await OBR.scene.items.updateItems([item.id], (draft) => {
       const target = draft[0];
-      if (local) delete target.metadata[ITEM_INHERITANCE_METADATA_KEY];
-      else target.metadata[ITEM_INHERITANCE_METADATA_KEY] = next;
-      if (local && !parent) return;
-      target.disableHit = next.disableHit;
-      target.locked = next.locked;
-      target.visible = next.visible;
+      if (independent) delete target.metadata[ITEM_INHERITANCE_METADATA_KEY];
+      else {
+        target.metadata[ITEM_INHERITANCE_METADATA_KEY] = { independent: true };
+        if (getTransparentState(target)?.source === "inherited") activateTransparency(target, "direct");
+      }
     });
-  });
-}
-
-export function setItemInheritedProperty(item: Item, property: StatefulProperty, value: boolean) {
-  return serialized(async () => {
-    const local = getItemRule(item);
-    if (!local) return;
-    const next = { ...local, [property]: value };
-    await OBR.scene.items.updateItems([item.id], (draft) => {
-      draft[0].metadata[ITEM_INHERITANCE_METADATA_KEY] = next;
-      draft[0][property] = value;
-    });
+    await enforceStateInheritance(state);
   });
 }
 
@@ -318,9 +333,12 @@ export async function readVirtualLayerState() {
   return parseVirtualLayerState((await OBR.scene.getMetadata())[VIRTUAL_LAYERS_METADATA_KEY]);
 }
 
-export function setGroupProperty(itemIds: string[], property: "visible" | "locked" | "disableHit", value: boolean) {
-  return OBR.scene.items.updateItems(itemIds, (items) => {
-    for (const item of items) item[property] = value;
+export function setItemTransparency(item: Item, value: boolean) {
+  return serialized(async () => {
+    await OBR.scene.items.updateItems([item.id], (items) => {
+      if (value) activateTransparency(items[0], "direct");
+      else restoreTransparency(items[0]);
+    });
   });
 }
 

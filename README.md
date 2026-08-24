@@ -81,13 +81,14 @@ Other source changes are hot-reloaded by Vite during development.
   layer menu.
 - Create scene-specific virtual layers inside native Owlbear layers, with strict
   stacking boundaries and independent item ordering.
-- Give virtual layers the same name to link their click-through, locked, and
-  visibility states across the scene. Linked layers show a chain glyph and
-  enforce their shared state independently of their native parent layers.
+- Give virtual layers the same name to link directly controlled transparent,
+  click-through, locked, and visibility values across the scene; an inheritance
+  instruction excludes only the property it Enforces.
 - Rename, reorder, hide, lock, make click-through, and delete virtual layers
   without changing or deleting their objects.
-- Cascade click-through, locked, and visibility states from native layers
-  through virtual layers to individual item overrides.
+- Enforce any subset of transparent, click-through, locked, and visibility states
+  from native layers, pass those instructions through virtual layers, or replace
+  them with Independent virtual-layer instructions and item exceptions.
 - Drag items between virtual layers or use the canvas Send to Layer menu for
   virtual-layer-aware multi-selection moves.
 - Choose which native Owlbear layers appear in Outliner+ and its Send menus

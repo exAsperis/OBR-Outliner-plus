@@ -20,6 +20,7 @@ test("hides the action row for an ordinary item at rest", () => {
     showActionRow: false,
     showGeneralActions: false,
     showInheritance: false,
+    showTransparent: false,
     showDisableHit: false,
     showLock: false,
     showVisibility: false,
@@ -35,6 +36,7 @@ for (const interaction of ["selected", "hovering", "focusWithin"] as const) {
         showActionRow: true,
         showGeneralActions: true,
         showInheritance: true,
+        showTransparent: true,
         showDisableHit: true,
         showLock: true,
         showVisibility: true,
@@ -51,6 +53,7 @@ test("shows only the dimmed Show control for a hidden item at rest", () => {
       showActionRow: true,
       showGeneralActions: false,
       showInheritance: false,
+      showTransparent: false,
       showDisableHit: false,
       showLock: false,
       showVisibility: true,
@@ -66,6 +69,7 @@ test("shows only the dimmed Unlock control for a locked item at rest", () => {
       showActionRow: true,
       showGeneralActions: false,
       showInheritance: false,
+      showTransparent: false,
       showDisableHit: false,
       showLock: true,
       showVisibility: false,
@@ -93,6 +97,7 @@ test("shows only the dimmed Enable clicks control for a click-through item at re
       showActionRow: true,
       showGeneralActions: false,
       showInheritance: false,
+      showTransparent: false,
       showDisableHit: true,
       showLock: false,
       showVisibility: false,
@@ -115,6 +120,7 @@ test("does not expose state controls without their permissions", () => {
       showActionRow: false,
       showGeneralActions: false,
       showInheritance: false,
+      showTransparent: false,
       showDisableHit: false,
       showLock: false,
       showVisibility: false,
@@ -135,6 +141,7 @@ test("keeps all inherited controls mounted at rest", () => {
     showActionRow: true,
     showGeneralActions: false,
     showInheritance: true,
+    showTransparent: true,
     showDisableHit: true,
     showLock: true,
     showVisibility: true,
@@ -147,6 +154,16 @@ test("reserves name space only from the first visible action onward", () => {
   assert.equal(getItemActionReservedSlots(getItemActionVisibility({ ...defaults, visible: false }), true), 1);
   assert.equal(getItemActionReservedSlots(getItemActionVisibility({ ...defaults, locked: true }), true), 2);
   assert.equal(getItemActionReservedSlots(getItemActionVisibility({ ...defaults, disableHit: true }), true), 3);
-  assert.equal(getItemActionReservedSlots(getItemActionVisibility({ ...defaults, inheritanceActive: true }), true), 4);
-  assert.equal(getItemActionReservedSlots(getItemActionVisibility({ ...defaults, hovering: true }), true), 6);
+  assert.equal(getItemActionReservedSlots(getItemActionVisibility({ ...defaults, transparent: true }), true), 4);
+  assert.equal(getItemActionReservedSlots(getItemActionVisibility({ ...defaults, inheritanceActive: true }), true), 5);
+  assert.equal(getItemActionReservedSlots(getItemActionVisibility({ ...defaults, hovering: true }), true), 7);
+});
+
+test("keeps only the GM restore control mounted for a transparent item at rest", () => {
+  const result = getItemActionVisibility({ ...defaults, transparent: true });
+  assert.equal(result.showActionRow, true);
+  assert.equal(result.showTransparent, true);
+  assert.equal(result.showGeneralActions, false);
+  assert.equal(result.dimmed, true);
+  assert.equal(getItemActionVisibility({ ...defaults, transparent: true, isGm: false }).showTransparent, false);
 });

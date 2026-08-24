@@ -9,7 +9,6 @@ import LockedIcon from "@mui/icons-material/LockRounded";
 import UnlockIcon from "@mui/icons-material/LockOpenRounded";
 import ClickableIcon from "@mui/icons-material/TouchAppRounded";
 import ClickThroughIcon from "@mui/icons-material/DoNotTouchRounded";
-import InheritanceIcon from "@mui/icons-material/AccountTreeRounded";
 import FogCutOnIcon from "./icons/other/FogCutOn";
 import FogCutOffIcon from "./icons/other/FogCutOff";
 import { useInView } from "react-intersection-observer";
@@ -26,8 +25,9 @@ import LocateIcon from "@mui/icons-material/CenterFocusStrongRounded";
 import type { StackOperation } from "./stacking";
 import { getItemActionReservedSlots, getItemActionVisibility } from "./itemActionVisibility";
 import { SendMenuButton } from "./SendMenuButton";
-import { getEffectiveItemRule, getItemParentRule, getItemRule, inheritanceLabel, type StatefulProperty } from "./stateInheritance";
+import { getEffectiveItemRule, getItemParentRule, getItemRule, itemInheritanceLabel, inheritanceVisualState, type StatefulProperty } from "./stateInheritance";
 import { setItemInheritedProperty, toggleItemInheritance } from "./virtualLayerService";
+import { InheritanceStateIcon } from "./InheritanceStateIcon";
 
 const ACTION_SLOT_SIZE = 30;
 
@@ -114,7 +114,9 @@ export const ItemListItem = memo(function ({
     else if (!inheritedOnly) void OBR.scene.items.updateItems([item], (items) => { items[0][property] = !current; });
   }
 
-  const inheritanceColor = localRule && parentRule ? "error" : effectiveRule ? "warning" : "default";
+  const inheritanceState = inheritanceVisualState("item", Boolean(localRule), Boolean(parentRule));
+  const inheritanceColor = inheritanceState === "enabled" ? "warning" : inheritanceState === "disabled" ? "default" : "error";
+  const inheritanceActionLabel = itemInheritanceLabel(Boolean(localRule), Boolean(parentRule));
   const stateColor = (property: StatefulProperty) => localRule && parentRule && localRule[property] !== parentRule[property] ? "error" : effectiveRule ? "warning" : "default";
   const disabledInheritedSx = inheritedOnly ? { "&.Mui-disabled": { color: "warning.main" } } : undefined;
   const displayed = effectiveRule ?? { disableHit: item.disableHit === true, locked: item.locked, visible: item.visible };
@@ -150,15 +152,15 @@ export const ItemListItem = memo(function ({
               </>
             ) : <EmptyActionSlot />}
             {actionVisibility.showInheritance ? (
-              <Tooltip title={inheritanceLabel(Boolean(localRule), Boolean(parentRule))} disableInteractive>
+              <Tooltip title={inheritanceActionLabel} disableInteractive>
                 <IconButton
-                  aria-label={inheritanceLabel(Boolean(localRule), Boolean(parentRule))}
+                  aria-label={inheritanceActionLabel}
                   color={inheritanceColor}
                   size="small"
                   onPointerDown={stopActionEvent}
                   onClick={(event) => handleActionClick(event, () => { void toggleItemInheritance(item); })}
                 >
-                  <InheritanceIcon fontSize="small" />
+                  <InheritanceStateIcon state={inheritanceState} fontSize="small" />
                 </IconButton>
               </Tooltip>
             ) : <EmptyActionSlot />}

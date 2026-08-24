@@ -4,7 +4,6 @@ import EditIcon from "@mui/icons-material/EditRounded";
 import LocateIcon from "@mui/icons-material/CenterFocusStrongRounded";
 import LockIcon from "@mui/icons-material/LockOpenRounded";
 import ClickThroughIcon from "@mui/icons-material/DoNotTouchRounded";
-import InheritanceIcon from "@mui/icons-material/AccountTreeRounded";
 import SendIcon from "@mui/icons-material/SendRounded";
 import VisibilityIcon from "@mui/icons-material/VisibilityRounded";
 import { useState, type ReactNode } from "react";
@@ -12,12 +11,13 @@ import instructions from "../website-assets/instructions.md?raw";
 import hero from "../website-assets/outliner-plus-hero.png";
 import contextMenu from "../website-assets/context-menu.png";
 import "./website.css";
+import { InheritanceEnabledIcon } from "./icons/other/InheritanceIcons";
 
 const INSTALL_URL = `${import.meta.env.VITE_PUBLIC_ORIGIN}/manifest.json`;
 
 const headingIcons: Record<string, ReactNode> = {
   "Create virtual layer": <AddIcon />,
-  "State inheritance and overrides": <InheritanceIcon />,
+  "State inheritance and overrides": <InheritanceEnabledIcon />,
   "Disable / Enable clicks": <ClickThroughIcon />,
   "Lock / Unlock": <LockIcon />,
   "Show / Hide": <VisibilityIcon />,

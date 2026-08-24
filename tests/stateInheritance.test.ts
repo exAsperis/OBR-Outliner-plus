@@ -8,6 +8,8 @@ import {
   getEffectiveItemRule,
   getItemParentRule,
   inheritanceLabel,
+  inheritanceVisualState,
+  itemInheritanceLabel,
   parseItemInheritance,
 } from "../src/stateInheritance.ts";
 import { createVirtualLayer, deleteVirtualLayer, parseVirtualLayerState, renameVirtualLayer, reorderVirtualLayer, setVirtualLayerRules, type InheritedItemState, type VirtualLayerState } from "../src/virtualLayers.ts";
@@ -74,6 +76,21 @@ test("uses contextual inheritance labels", () => {
   assert.equal(inheritanceLabel(false, true), "Override inherited state");
   assert.equal(inheritanceLabel(true, true), "Remove override");
   assert.equal(inheritanceLabel(true, false), "Disable inheritance");
+  assert.equal(itemInheritanceLabel(false, false), "Block inheritance");
+  assert.equal(itemInheritanceLabel(true, false), "Allow inheritance");
+  assert.equal(itemInheritanceLabel(false, true), "Override inherited state");
+  assert.equal(itemInheritanceLabel(true, true), "Remove override");
+});
+
+test("maps hierarchy rules to the four inheritance icon states", () => {
+  assert.equal(inheritanceVisualState("native", false, false), "disabled");
+  assert.equal(inheritanceVisualState("native", true, false), "enabled");
+  assert.equal(inheritanceVisualState("virtual", false, true), "enabled");
+  assert.equal(inheritanceVisualState("virtual", true, false), "blocked-virtual-layer");
+  assert.equal(inheritanceVisualState("virtual", true, true), "blocked-virtual-layer");
+  assert.equal(inheritanceVisualState("item", false, true), "enabled");
+  assert.equal(inheritanceVisualState("item", true, false), "blocked-item");
+  assert.equal(inheritanceVisualState("item", true, true), "blocked-item");
 });
 
 test("preserves rules through edits and removes a deleted virtual-layer rule", () => {

@@ -7,7 +7,6 @@ import LockedIcon from "@mui/icons-material/LockRounded";
 import UnlockIcon from "@mui/icons-material/LockOpenRounded";
 import ClickableIcon from "@mui/icons-material/TouchAppRounded";
 import ClickThroughIcon from "@mui/icons-material/DoNotTouchRounded";
-import InheritanceIcon from "@mui/icons-material/AccountTreeRounded";
 import LinkIcon from "@mui/icons-material/LinkRounded";
 import FogCutOnIcon from "./icons/other/FogCutOn";
 import FogCutOffIcon from "./icons/other/FogCutOff";
@@ -33,9 +32,10 @@ import { isLinkedVirtualLayer, resolveGroupId, UNASSIGNED_ID, type VirtualLayerD
 import type { DropPosition } from "./dragPosition";
 import { SendMenuButton } from "./SendMenuButton";
 import { getLayerPropertyState } from "./layerPropertyState";
-import { captureAggregateState, getGroupRule, getItemRule, getNativeRule, inheritanceLabel, type StatefulProperty } from "./stateInheritance";
+import { captureAggregateState, getGroupRule, getItemRule, getNativeRule, inheritanceLabel, inheritanceVisualState, type StatefulProperty } from "./stateInheritance";
 import { setGroupProperty, setScopeInheritedProperty, toggleScopeInheritance, type RuleScope } from "./virtualLayerService";
 import { OverflowTooltipText } from "./OverflowTooltipText";
+import { InheritanceStateIcon } from "./InheritanceStateIcon";
 
 const NATIVE_LAYER_HEADER_HEIGHT = 40;
 
@@ -135,7 +135,8 @@ function LayerPropertyControls({ items, scope, fog = false, linked = false }: { 
   const visibilityAction = fog
     ? displayed.visible ? "Cut all" : "Uncut all"
     : displayed.visible ? "Hide all" : "Show all";
-  const inheritanceColor = localRule && parentRule ? "error" : effectiveRule ? "warning" : "default";
+  const inheritanceState = inheritanceVisualState(scope.kind === "native" ? "native" : "virtual", Boolean(localRule), Boolean(parentRule));
+  const inheritanceColor = inheritanceState === "enabled" ? "warning" : inheritanceState === "disabled" ? "default" : "error";
   const stateColor = (property: StatefulProperty, mixed: boolean) => localRule && parentRule && localRule[property] !== parentRule[property]
     ? "error" : effectiveRule ? "warning" : mixed ? "info" : "default";
   const disabled = inheritedOnly || !hasTargets;
@@ -144,7 +145,7 @@ function LayerPropertyControls({ items, scope, fog = false, linked = false }: { 
     ? setScopeInheritedProperty(scope, property, value)
     : setGroupProperty(eligible.map((item) => item.id), property, value);
   return <>
-    <Tooltip title={linked ? "Linked virtual layers always enforce inheritance" : inheritanceLabel(Boolean(localRule), Boolean(parentRule))}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" aria-label={linked ? "Inheritance enforced for linked virtual layer" : inheritanceLabel(Boolean(localRule), Boolean(parentRule))} color={inheritanceColor} disabled={linked} sx={linked ? { "&.Mui-disabled": { color: "warning.main" } } : undefined} onClick={(event) => { event.stopPropagation(); void toggleScopeInheritance(scope, parentRule ?? captureAggregateState(eligible)); }}><InheritanceIcon fontSize="small" /></IconButton></Box></Tooltip>
+    <Tooltip title={linked ? "Linked virtual layers always block parent inheritance" : inheritanceLabel(Boolean(localRule), Boolean(parentRule))}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" aria-label={linked ? "Parent inheritance blocked for linked virtual layer" : inheritanceLabel(Boolean(localRule), Boolean(parentRule))} color={inheritanceColor} disabled={linked} sx={linked ? { "&.Mui-disabled": { color: "error.main" } } : undefined} onClick={(event) => { event.stopPropagation(); void toggleScopeInheritance(scope, parentRule ?? captureAggregateState(eligible)); }}><InheritanceStateIcon state={inheritanceState} fontSize="small" /></IconButton></Box></Tooltip>
     <Tooltip title={displayed.disableHit ? "Enable clicks for all" : "Disable clicks for all"}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" aria-label={displayed.disableHit ? "Enable clicks for all" : "Disable clicks for all"} color={stateColor("disableHit", mixedDisableHit)} disabled={disabled} sx={disabledSx} onClick={(event) => { event.stopPropagation(); void setProperty("disableHit", !displayed.disableHit); }}>{displayed.disableHit ? <ClickThroughIcon fontSize="small" /> : <ClickableIcon fontSize="small" />}</IconButton></Box></Tooltip>
     <Tooltip title={displayed.locked ? "Unlock all" : "Lock all"}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" color={stateColor("locked", mixedLocked)} disabled={disabled} sx={disabledSx} onClick={(event) => { event.stopPropagation(); void setProperty("locked", !displayed.locked); }}>{displayed.locked ? <LockedIcon fontSize="small" /> : <UnlockIcon fontSize="small" />}</IconButton></Box></Tooltip>
     <Tooltip title={visibilityAction}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" color={stateColor("visible", mixedVisible)} disabled={disabled} sx={disabledSx} onClick={(event) => { event.stopPropagation(); void setProperty("visible", !displayed.visible); }}>{fog ? displayed.visible ? <FogCutOffIcon fontSize="small" /> : <FogCutOnIcon fontSize="small" /> : displayed.visible ? <VisibleIcon fontSize="small" /> : <HiddenIcon fontSize="small" />}</IconButton></Box></Tooltip>

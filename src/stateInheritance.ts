@@ -7,6 +7,7 @@ const VIRTUAL_LAYER_METADATA_KEY = "com.ex-asperis.outliner/virtualLayer";
 const UNASSIGNED_ID = "__unassigned__";
 
 export type StatefulProperty = "disableHit" | "locked" | "visible";
+export type InheritanceVisualState = "disabled" | "enabled" | "blocked-item" | "blocked-virtual-layer";
 export const EMPTY_INHERITED_STATE: InheritedItemState = { disableHit: false, locked: false, visible: true };
 
 export function itemState(item: Pick<Item, "disableHit" | "locked" | "visible">): InheritedItemState {
@@ -68,6 +69,20 @@ export function statesEqual(a: InheritedItemState | undefined, b: InheritedItemS
 export function inheritanceLabel(local: boolean, parent: boolean) {
   if (local) return parent ? "Remove override" : "Disable inheritance";
   return parent ? "Override inherited state" : "Enable inheritance";
+}
+
+export function itemInheritanceLabel(local: boolean, parent: boolean) {
+  if (!parent) return local ? "Allow inheritance" : "Block inheritance";
+  return inheritanceLabel(local, parent);
+}
+
+export function inheritanceVisualState(level: "native" | "virtual" | "item", local: boolean, parent: boolean): InheritanceVisualState {
+  if (local) {
+    if (level === "item") return "blocked-item";
+    if (level === "virtual") return "blocked-virtual-layer";
+    return "enabled";
+  }
+  return parent ? "enabled" : "disabled";
 }
 
 export function captureAggregateState(items: Array<Pick<Item, "disableHit" | "locked" | "visible">>): InheritedItemState {

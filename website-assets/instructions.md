@@ -6,9 +6,9 @@ Browse, search, and organize Scene items by layer. Create virtual layers to keep
 
 Outliner+ builds on the original [Outliner extension](https://extensions.owlbear.rodeo/outliner) with virtual layers, quick controls, and a Locate action.
 
-The Outliner+ panel mirrors the layers and items in the current Scene. Select an item in the panel to select it on the map, double-click an item to center the viewport on it, or use Search to filter the list by name and other item details.
+The Outliner+ panel mirrors the layers and items in the current Scene. Select an item in the panel to select it on the map, double-click an item to center the viewport on it, or use Search to filter the list by name and other item details. Truncated native-layer, virtual-layer, and item names display their full text when hovered.
 
-Game Masters can select **Settings** beside Search to open the *Use layers* panel above the Outliner. Its switches choose which native Owlbear layers appear in the list and in Send to Layer menus. These per-device display preferences do not move, modify, or delete items or virtual layers, and do not change state inheritance. Select Settings again to close the panel.
+Game Masters can select **Settings** beside Search to open the *Use layers* panel above the Outliner. Its switches choose which of Owlbear Rodeo's native layers appear in the list and in Send to Layer menus. The eleven layers previously supported by Outliner+ start enabled; Grid, Post Process, Control, and Popover start disabled. These per-device display preferences do not move, modify, or delete items or virtual layers, and do not change state inheritance. Select Settings again to close the panel.
 
 ## Virtual layers
 
@@ -19,7 +19,7 @@ For example:
 - In the Maps layer, create Ground and Buildings virtual layers so building images remain above ground images.
 - In the Props layer, create Interior and Roof virtual layers so roof props remain above interior props.
 
-Drag a virtual-layer heading to change its position, or use its Send menu. Drag items into a virtual layer to assign them to it. Once a native Owlbear layer contains a virtual layer, Outliner+ also displays an italicized Unassigned group for items that have not been assigned to one.
+Drag a virtual-layer heading to change its position, or use its Send menu. Drag items into a virtual layer to assign them to it. Once a native Owlbear layer contains a virtual layer, Outliner+ also displays an italicized Unassigned group for items that have not been assigned to one. Unlinked virtual layers and Unassigned use a rounded outline glyph; linked virtual layers use a chain glyph. Edit, Delete, and Send controls on these headings appear on hover or keyboard focus, while state controls remain visible.
 
 ### Limitation
 
@@ -37,9 +37,9 @@ Creates a virtual layer inside the selected Owlbear layer. Creating the first vi
 
 ### State inheritance and overrides
 
-The inheritance control appears immediately to the left of Click-through on Owlbear layers, virtual layers, Unassigned groups, and individual items. Enabling inheritance stores that level's click-through, locked, and visibility values and applies them continuously to its contents, including items added or moved there later.
+The inheritance control appears immediately to the left of Click-through on Owlbear layers, virtual layers, Unassigned groups, and individual items. Enabling inheritance stores that level's click-through, locked, and visibility values and applies them continuously to its contents, including items added or moved there later. On an item with no parent rule, the same control uses *Block inheritance* and *Allow inheritance* to describe creating or removing its explicit item-level block.
 
-Inheritance cascades from an Owlbear layer to its virtual or Unassigned groups and then to individual items. A gold control is inherited or locally enforced. Inherited state buttons are disabled; select *Override inherited state* to create an editable local rule. A red inheritance control marks a local override beneath another rule, and an individual red state button differs from its parent. Removing an override returns that level to its nearest parent rule.
+Inheritance cascades from an Owlbear layer to its virtual or Unassigned groups and then to individual items. The inheritance glyph shows the entire path: gray with a slash means no inheritance rule applies, gold means inheritance flows normally, red with a break at the virtual-layer step means that virtual or Unassigned group blocks its parent, and red with a break at the item step means that item blocks its parent. Inherited state buttons are disabled; select *Override inherited state* to create an editable local rule. Removing an override returns that level to its nearest parent rule.
 
 Linked virtual layers always enforce their shared state, blocking inheritance from their parent Owlbear layers. Their inheritance controls are disabled until they are unlinked. Individual child items can still override the linked state normally.
 

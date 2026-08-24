@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getItemActionVisibility } from "../src/itemActionVisibility.ts";
+import { getItemActionReservedSlots, getItemActionVisibility } from "../src/itemActionVisibility.ts";
 
 const defaults = {
   selected: false,
@@ -140,4 +140,13 @@ test("keeps all inherited controls mounted at rest", () => {
     showVisibility: true,
     dimmed: true,
   });
+});
+
+test("reserves name space only from the first visible action onward", () => {
+  assert.equal(getItemActionReservedSlots(getItemActionVisibility(defaults), true), 0);
+  assert.equal(getItemActionReservedSlots(getItemActionVisibility({ ...defaults, visible: false }), true), 1);
+  assert.equal(getItemActionReservedSlots(getItemActionVisibility({ ...defaults, locked: true }), true), 2);
+  assert.equal(getItemActionReservedSlots(getItemActionVisibility({ ...defaults, disableHit: true }), true), 3);
+  assert.equal(getItemActionReservedSlots(getItemActionVisibility({ ...defaults, inheritanceActive: true }), true), 4);
+  assert.equal(getItemActionReservedSlots(getItemActionVisibility({ ...defaults, hovering: true }), true), 6);
 });

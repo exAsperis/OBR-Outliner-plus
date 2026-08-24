@@ -24,7 +24,7 @@ import { IconButton } from "@mui/material";
 import { useItemHsaPermission } from "./useHasPermission";
 import LocateIcon from "@mui/icons-material/CenterFocusStrongRounded";
 import type { StackOperation } from "./stacking";
-import { getItemActionVisibility } from "./itemActionVisibility";
+import { getItemActionReservedSlots, getItemActionVisibility } from "./itemActionVisibility";
 import { SendMenuButton } from "./SendMenuButton";
 import { getEffectiveItemRule, getItemParentRule, getItemRule, inheritanceLabel, type StatefulProperty } from "./stateInheritance";
 import { setItemInheritedProperty, toggleItemInheritance } from "./virtualLayerService";
@@ -93,6 +93,7 @@ export const ItemListItem = memo(function ({
     isGm: role === "GM",
   });
   const showActions = inView && actionVisibility.showActionRow;
+  const reservedActionSlots = getItemActionReservedSlots(actionVisibility, hasUpdatePermission);
 
   function stopActionEvent(event: React.SyntheticEvent) {
     event.preventDefault();
@@ -264,7 +265,7 @@ export const ItemListItem = memo(function ({
       }}
       sx={{
         ".MuiListItemButton-root": {
-          pr: showActions ? "202px" : undefined,
+          pr: showActions ? `${reservedActionSlots * ACTION_SLOT_SIZE + 22}px` : undefined,
         },
       }}
     >

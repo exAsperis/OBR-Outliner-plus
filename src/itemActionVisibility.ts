@@ -50,3 +50,16 @@ export function getItemActionVisibility({
     dimmed: !interacting,
   };
 }
+
+export function getItemActionReservedSlots(visibility: ItemActionVisibility, hasUpdatePermission: boolean) {
+  const visibleSlots = [
+    visibility.showGeneralActions,
+    visibility.showGeneralActions && hasUpdatePermission,
+    visibility.showInheritance,
+    visibility.showDisableHit,
+    visibility.showLock,
+    visibility.showVisibility,
+  ];
+  const firstVisible = visibleSlots.indexOf(true);
+  return firstVisible < 0 ? 0 : visibleSlots.length - firstVisible;
+}

@@ -136,10 +136,8 @@ export async function enforceStateInheritance(state?: VirtualLayerState) {
         if (instructions.transparent) activateTransparency(item, "inherited");
         else restoreTransparency(item);
       } else if (getTransparentState(item)?.source === "inherited") restoreTransparency(item);
-      if (!instructions.transparent) {
-        if (typeof instructions.disableHit === "boolean") item.disableHit = instructions.disableHit;
-        if (typeof instructions.visible === "boolean") item.visible = instructions.visible;
-      }
+      if (typeof instructions.disableHit === "boolean") item.disableHit = instructions.disableHit;
+      if (typeof instructions.visible === "boolean") item.visible = instructions.visible;
       if (typeof instructions.locked === "boolean") item.locked = instructions.locked;
     }
   });

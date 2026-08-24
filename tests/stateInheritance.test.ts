@@ -100,14 +100,29 @@ test("plans inherited transparency activation and restoration", () => {
   const target = item("target", "roofs");
   assert.deepEqual(calculateInheritanceUpdates([target], state).get("target"), { instructions: { transparent: true } });
   target.metadata["com.ex-asperis.outliner/transparentState"] = {
-    scale: { x: 1, y: 1 }, visible: true, disableHit: false, source: "inherited",
+    scale: { x: 1, y: 1 }, source: "inherited",
   };
   target.scale = { x: 0, y: 0 };
-  target.visible = false;
-  target.disableHit = true;
   assert.equal(calculateInheritanceUpdates([target], state).size, 0);
   const withoutRule: VirtualLayerState = { version: 2, layers: state.layers };
   assert.deepEqual(calculateInheritanceUpdates([target], withoutRule).get("target"), { instructions: {} });
+});
+
+test("allows visibility and click-through instructions to compose with transparency", () => {
+  const target = item("compound", "roofs");
+  target.metadata["com.ex-asperis.outliner/transparentState"] = { scale: { x: 1, y: 1 }, source: "inherited" };
+  target.scale = { x: 0, y: 0 };
+  target.visible = false;
+  target.disableHit = true;
+  const compound: VirtualLayerState = {
+    ...state,
+    inheritance: { ...state.inheritance, virtual: {
+      roofs: { mode: "independent", enforce: { transparent: true, visible: true, disableHit: false } },
+    } },
+  };
+  assert.deepEqual(calculateInheritanceUpdates([target], compound).get("compound"), {
+    instructions: { transparent: true, visible: true, disableHit: false },
+  });
 });
 
 test("migrates a legacy independent transparent item without restoring it", () => {

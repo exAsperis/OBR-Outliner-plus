@@ -45,7 +45,7 @@ Virtual layers and Unassigned groups use one of two modes. **Pass thru** accepts
 
 On an item, the inheritance button directly switches between allowing applicable parent instructions and **Independent**. An Independent item blocks every parent instruction, including properties for which its parent has no replacement. Allowing inheritance again immediately accepts the effective parent subset.
 
-An instructed state control edits the value supplied by the layer that enforces it. A property received by a Pass-thru layer or an inheriting item is disabled there. Uninstructed properties remain directly editable. Turning off an ordinary instruction leaves items at their last applied value; turning off Transparent restores each item's saved pre-transparency scale, visibility, clickability, and image-label opacity.
+An instructed state control edits the value supplied by the layer that enforces it. A property received by a Pass-thru layer or an inheriting item is disabled there. Uninstructed properties remain directly editable. Turning off an ordinary instruction leaves items at their last applied value; turning off Transparent restores each item's saved pre-transparency scale and image-label opacity. Transparency does not change Visibility or Click-through, so those properties remain independently controllable and composable with their own instructions.
 
 The inheritance glyph is gold when instructions are enforced or actively passed through, gray and slashed when none apply, and red with a broken virtual-layer or item step for Independent mode. Mixed direct values use the existing blue state glyphs. Empty groups can still configure Enforce instructions even though uninstructed bulk controls are unavailable.
 

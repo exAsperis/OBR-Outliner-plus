@@ -101,8 +101,8 @@ export function calculateInheritanceUpdates(items: Item[], state: VirtualLayerSt
     const transparencyMismatch = has(instructions, "transparent")
       ? instructions.transparent ? !transparentState || needsTransparencyEnforcement(item) : Boolean(transparentState)
       : transparentState?.source === "inherited";
-    const hitMismatch = has(instructions, "disableHit") && !instructions.transparent && (item.disableHit === true) !== instructions.disableHit;
-    const visibleMismatch = has(instructions, "visible") && !instructions.transparent && item.visible !== instructions.visible;
+    const hitMismatch = has(instructions, "disableHit") && (item.disableHit === true) !== instructions.disableHit;
+    const visibleMismatch = has(instructions, "visible") && item.visible !== instructions.visible;
     const lockMismatch = has(instructions, "locked") && item.locked !== instructions.locked;
     if (transparencyMismatch || hitMismatch || visibleMismatch || lockMismatch) updates.set(item.id, { instructions });
   }

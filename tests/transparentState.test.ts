@@ -16,18 +16,20 @@ function labeledImage(): Item {
   } as Item;
 }
 
-test("captures and exactly restores scale, visibility, and clickability", () => {
+test("captures and restores scale without changing visibility or clickability", () => {
   const target = item();
   activateTransparency(target, "direct");
   assert.deepEqual(target.scale, { x: 0, y: 0 });
   assert.equal(target.visible, false);
-  assert.equal(target.disableHit, true);
+  assert.equal(target.disableHit, false);
   assert.equal(isItemTransparent(target), true);
-  assert.deepEqual(getTransparentState(target), { scale: { x: 2.5, y: -3 }, visible: false, disableHit: false, source: "direct" });
+  assert.deepEqual(getTransparentState(target), { scale: { x: 2.5, y: -3 }, source: "direct" });
+  target.visible = true;
+  target.disableHit = true;
   assert.equal(restoreTransparency(target), true);
   assert.deepEqual(target.scale, { x: 2.5, y: -3 });
-  assert.equal(target.visible, false);
-  assert.equal(target.disableHit, false);
+  assert.equal(target.visible, true);
+  assert.equal(target.disableHit, true);
   assert.equal(isItemTransparent(target), false);
 });
 
@@ -35,7 +37,7 @@ test("repeated activation preserves the first captured values while updating pro
   const target = item();
   activateTransparency(target, "direct");
   activateTransparency(target, "inherited");
-  assert.deepEqual(getTransparentState(target), { scale: { x: 2.5, y: -3 }, visible: false, disableHit: false, source: "inherited" });
+  assert.deepEqual(getTransparentState(target), { scale: { x: 2.5, y: -3 }, source: "inherited" });
 });
 
 test("ignores malformed metadata without inventing restoration values", () => {
@@ -73,6 +75,11 @@ test("upgrades existing transparency metadata by capturing the live label style"
   target.disableHit = true;
   assert.equal(needsTransparencyEnforcement(target), true);
   activateTransparency(target, "direct");
+  assert.equal(target.visible, true);
+  assert.equal(target.disableHit, false);
+  assert.deepEqual(getTransparentState(target), {
+    scale: { x: 1, y: 1 }, source: "direct", label: { fillOpacity: 0.65, strokeOpacity: 0.35 },
+  });
   assert.deepEqual(getTransparentState(target)?.label, { fillOpacity: 0.65, strokeOpacity: 0.35 });
   assert.deepEqual(target.text.style, { fillOpacity: 0, strokeOpacity: 0 });
 });
@@ -93,4 +100,10 @@ test("keeps legacy metadata valid when optional label state is malformed", () =>
   assert.deepEqual(parseTransparentState({
     scale: { x: 1, y: 1 }, visible: true, disableHit: false, source: "direct", label: { fillOpacity: "bad" },
   }), { scale: { x: 1, y: 1 }, visible: true, disableHit: false, source: "direct" });
+});
+
+test("accepts current scale-only metadata", () => {
+  assert.deepEqual(parseTransparentState({ scale: { x: 1, y: 1 }, source: "direct" }), {
+    scale: { x: 1, y: 1 }, source: "direct",
+  });
 });

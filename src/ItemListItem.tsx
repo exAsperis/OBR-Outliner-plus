@@ -30,6 +30,7 @@ import { setItemTransparency, toggleItemInheritance } from "./virtualLayerServic
 import { InheritanceStateIcon } from "./InheritanceStateIcon";
 import { isItemTransparent } from "./transparentState";
 import { OpaqueIcon, TransparentIcon } from "./icons/other/TransparencyIcons";
+import { useLayerDisplaySettings } from "./layerSettings";
 
 const ACTION_SLOT_SIZE = 30;
 
@@ -73,6 +74,7 @@ export const ItemListItem = memo(function ({
   const independent = Boolean(localRule);
   const effectiveRule = independent ? {} : parentRule;
   const transparent = isItemTransparent(item);
+  const features = useLayerDisplaySettings().features;
 
   const [ref, inView] = useInView();
 
@@ -95,9 +97,14 @@ export const ItemListItem = memo(function ({
     visible: item.visible,
     hasUpdatePermission,
     isGm: role === "GM",
+    manageInheritance: features.manageInheritance,
+    transparencyEnabled: features.transparency,
+    interactionEnabled: features.interaction,
+    lockedEnabled: features.locked,
+    visibleEnabled: features.visible,
   });
   const showActions = inView && actionVisibility.showActionRow;
-  const reservedActionSlots = getItemActionReservedSlots(actionVisibility, hasUpdatePermission);
+  const reservedActionSlots = getItemActionReservedSlots(actionVisibility, hasUpdatePermission, features);
 
   function stopActionEvent(event: React.SyntheticEvent) {
     event.preventDefault();
@@ -156,7 +163,7 @@ export const ItemListItem = memo(function ({
                 />
               </>
             ) : <EmptyActionSlot />}
-            {actionVisibility.showInheritance ? (
+            {features.manageInheritance && (actionVisibility.showInheritance ? (
               <Tooltip title={inheritanceActionLabel} disableInteractive>
                 <IconButton
                   aria-label={inheritanceActionLabel}
@@ -168,8 +175,8 @@ export const ItemListItem = memo(function ({
                   <InheritanceStateIcon state={inheritanceState} fontSize="small" />
                 </IconButton>
               </Tooltip>
-            ) : <EmptyActionSlot />}
-            {actionVisibility.showTransparent ? (
+            ) : <EmptyActionSlot />)}
+            {features.transparency && (actionVisibility.showTransparent ? (
               <Tooltip title={displayed.transparent ? "Restore item" : "Make transparent"} disableInteractive>
                 <IconButton
                   aria-label={displayed.transparent ? "Restore item" : "Make transparent"}
@@ -183,8 +190,8 @@ export const ItemListItem = memo(function ({
                   {displayed.transparent ? <TransparentIcon fontSize="small" /> : <OpaqueIcon fontSize="small" />}
                 </IconButton>
               </Tooltip>
-            ) : <EmptyActionSlot />}
-            {actionVisibility.showDisableHit ? (
+            ) : <EmptyActionSlot />)}
+            {features.interaction && (actionVisibility.showDisableHit ? (
               <Tooltip
                 title={displayed.disableHit ? "Enable clicks" : "Disable clicks"}
                 disableInteractive
@@ -205,8 +212,8 @@ export const ItemListItem = memo(function ({
                   )}
                 </IconButton>
               </Tooltip>
-            ) : <EmptyActionSlot />}
-            {actionVisibility.showLock ? (
+            ) : <EmptyActionSlot />)}
+            {features.locked && (actionVisibility.showLock ? (
               <Tooltip
                 title={displayed.locked ? "Unlock" : "Lock"}
                 disableInteractive
@@ -227,8 +234,8 @@ export const ItemListItem = memo(function ({
                   )}
                 </IconButton>
               </Tooltip>
-            ) : <EmptyActionSlot />}
-            {actionVisibility.showVisibility ? (
+            ) : <EmptyActionSlot />)}
+            {features.visible && (actionVisibility.showVisibility ? (
               <Tooltip
                 title={
                   displayed.visible
@@ -265,7 +272,7 @@ export const ItemListItem = memo(function ({
                   )}
                 </IconButton>
               </Tooltip>
-            ) : <EmptyActionSlot />}
+            ) : <EmptyActionSlot />)}
           </Stack>
         ) : undefined
       }

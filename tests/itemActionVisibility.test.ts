@@ -167,3 +167,27 @@ test("keeps only the GM restore control mounted for a transparent item at rest",
   assert.equal(result.dimmed, true);
   assert.equal(getItemActionVisibility({ ...defaults, transparent: true, isGm: false }).showTransparent, false);
 });
+
+test("feature preferences remove their item action controls", () => {
+  const result = getItemActionVisibility({
+    ...defaults,
+    hovering: true,
+    manageInheritance: false,
+    transparencyEnabled: false,
+    interactionEnabled: false,
+    lockedEnabled: true,
+    visibleEnabled: true,
+  });
+  assert.equal(result.showInheritance, false);
+  assert.equal(result.showTransparent, false);
+  assert.equal(result.showDisableHit, false);
+  assert.equal(result.showLock, true);
+  assert.equal(result.showVisibility, true);
+  assert.equal(getItemActionReservedSlots(result, true, {
+    manageInheritance: false,
+    transparency: false,
+    interaction: false,
+    locked: true,
+    visible: true,
+  }), 4);
+});

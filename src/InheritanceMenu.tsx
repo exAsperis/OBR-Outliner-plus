@@ -5,22 +5,26 @@ import Switch from "@mui/material/Switch";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/CloseRounded";
 import type { EnforcedItemState, InheritedItemState, StatefulProperty, VirtualInheritance } from "./virtualLayers";
 import { setGroupInheritanceMode, setScopeEnforcement, type RuleScope } from "./virtualLayerService";
+import type { FeatureSettings } from "./layerSettings";
 
-const PROPERTIES: Array<{ property: StatefulProperty; label: string }> = [
-  { property: "transparent", label: "Transparent" },
-  { property: "disableHit", label: "Click-through" },
-  { property: "locked", label: "Locked" },
-  { property: "visible", label: "Visible" },
+const PROPERTIES: Array<{ property: StatefulProperty; feature: keyof FeatureSettings; label: string }> = [
+  { property: "transparent", feature: "transparency", label: "Transparent" },
+  { property: "disableHit", feature: "interaction", label: "Click-through" },
+  { property: "locked", feature: "locked", label: "Locked" },
+  { property: "visible", feature: "visible", label: "Visible" },
 ];
 
-export function InheritanceMenu({ anchorEl, scope, config, enforce, displayed, onClose }: {
+export function InheritanceMenu({ anchorEl, scope, config, enforce, displayed, features, onClose }: {
   anchorEl: HTMLElement | null;
   scope: RuleScope;
   config?: VirtualInheritance;
   enforce: EnforcedItemState;
   displayed: InheritedItemState;
+  features: FeatureSettings;
   onClose: () => void;
 }) {
   const independent = config?.mode === "independent";
@@ -36,6 +40,12 @@ export function InheritanceMenu({ anchorEl, scope, config, enforce, displayed, o
       sx: { p: 1, width: 190 },
     }}
   >
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pl: 0.5, mb: 0.5 }}>
+      <Typography variant="subtitle2">Inheritance</Typography>
+      <IconButton size="small" aria-label="Close inheritance settings" onClick={onClose}>
+        <CloseIcon fontSize="small" />
+      </IconButton>
+    </Box>
     {scope.kind === "group" && <>
       <Typography variant="caption" color="text.secondary" sx={{ display: "block", px: 0.5, pb: 0.5 }}>Mode</Typography>
       <ToggleButtonGroup
@@ -53,7 +63,7 @@ export function InheritanceMenu({ anchorEl, scope, config, enforce, displayed, o
     </>}
     {(scope.kind === "native" || independent) && <Box component="fieldset" sx={{ border: 0, p: 0, m: 0, width: "100%" }}>
       <Typography component="legend" variant="caption" color="text.secondary" sx={{ px: 0.5 }}>Enforce</Typography>
-      {PROPERTIES.map(({ property, label }) => <FormControlLabel
+      {PROPERTIES.filter(({ feature }) => features[feature]).map(({ property, label }) => <FormControlLabel
         key={property}
         label={label}
         labelPlacement="start"

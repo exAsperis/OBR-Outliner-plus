@@ -6,12 +6,32 @@ import { DEFAULT_OUTLINER_LAYERS, OUTLINER_LAYERS_TOP_TO_BOTTOM } from "./layers
 export interface LayerDisplaySettings {
   version: 1;
   enabledLayers: Item["layer"][];
+  features: FeatureSettings;
 }
+
+export interface FeatureSettings {
+  manageInheritance: boolean;
+  transparency: boolean;
+  interaction: boolean;
+  locked: boolean;
+  visible: boolean;
+}
+
+export type FeatureSetting = keyof FeatureSettings;
+
+export const DEFAULT_FEATURE_SETTINGS: FeatureSettings = {
+  manageInheritance: true,
+  transparency: false,
+  interaction: false,
+  locked: true,
+  visible: true,
+};
 
 export const LAYER_DISPLAY_SETTINGS_KEY = `${EXTENSION_ID}/layerDisplaySettings`;
 export const DEFAULT_LAYER_DISPLAY_SETTINGS: LayerDisplaySettings = {
   version: 1,
   enabledLayers: [...DEFAULT_OUTLINER_LAYERS],
+  features: DEFAULT_FEATURE_SETTINGS,
 };
 
 const knownLayers = new Set<string>(OUTLINER_LAYERS_TOP_TO_BOTTOM);
@@ -22,9 +42,19 @@ export function parseLayerDisplaySettings(value: unknown): LayerDisplaySettings 
   const enabled = new Set((value as { enabledLayers: unknown[] }).enabledLayers.filter(
     (layer): layer is Item["layer"] => typeof layer === "string" && knownLayers.has(layer),
   ));
+  const candidateFeatures = (value as { features?: unknown }).features;
+  const features = candidateFeatures && typeof candidateFeatures === "object"
+    ? Object.fromEntries(Object.entries(DEFAULT_FEATURE_SETTINGS).map(([feature, fallback]) => [
+        feature,
+        typeof (candidateFeatures as Record<string, unknown>)[feature] === "boolean"
+          ? (candidateFeatures as Record<string, boolean>)[feature]
+          : fallback,
+      ])) as unknown as FeatureSettings
+    : DEFAULT_FEATURE_SETTINGS;
   return {
     version: 1,
     enabledLayers: OUTLINER_LAYERS_TOP_TO_BOTTOM.filter((layer) => enabled.has(layer)),
+    features,
   };
 }
 
@@ -49,8 +79,17 @@ export function setLayerEnabled(layer: Item["layer"], enabled: boolean) {
   const selected = new Set(current.enabledLayers);
   if (enabled) selected.add(layer); else selected.delete(layer);
   const next: LayerDisplaySettings = {
-    version: 1,
+    ...current,
     enabledLayers: OUTLINER_LAYERS_TOP_TO_BOTTOM.filter((candidate) => selected.has(candidate)),
+  };
+  try { window.localStorage.setItem(LAYER_DISPLAY_SETTINGS_KEY, JSON.stringify(next)); } catch { /* Keep the live preference when storage is unavailable. */ }
+  emit(next);
+}
+
+export function setFeatureEnabled(feature: FeatureSetting, enabled: boolean) {
+  const next: LayerDisplaySettings = {
+    ...current,
+    features: { ...current.features, [feature]: enabled },
   };
   try { window.localStorage.setItem(LAYER_DISPLAY_SETTINGS_KEY, JSON.stringify(next)); } catch { /* Keep the live preference when storage is unavailable. */ }
   emit(next);

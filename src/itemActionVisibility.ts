@@ -10,6 +10,11 @@ export interface ItemActionVisibilityInput {
   visible: boolean;
   hasUpdatePermission: boolean;
   isGm: boolean;
+  manageInheritance?: boolean;
+  transparencyEnabled?: boolean;
+  interactionEnabled?: boolean;
+  lockedEnabled?: boolean;
+  visibleEnabled?: boolean;
 }
 
 export interface ItemActionVisibility {
@@ -35,14 +40,19 @@ export function getItemActionVisibility({
   visible,
   hasUpdatePermission,
   isGm,
+  manageInheritance = true,
+  transparencyEnabled = true,
+  interactionEnabled = true,
+  lockedEnabled = true,
+  visibleEnabled = true,
 }: ItemActionVisibilityInput): ItemActionVisibility {
   const interacting = selected || hovering || focusWithin;
   const showGeneralActions = interacting || layerMenuOpen;
-  const showInheritance = hasUpdatePermission && (interacting || inheritanceActive);
-  const showTransparent = isGm && hasUpdatePermission && (interacting || inheritanceActive || transparent);
-  const showDisableHit = hasUpdatePermission && (interacting || inheritanceActive || disableHit);
-  const showLock = hasUpdatePermission && (interacting || inheritanceActive || locked);
-  const showVisibility = isGm && (interacting || inheritanceActive || !visible);
+  const showInheritance = manageInheritance && hasUpdatePermission && (interacting || inheritanceActive);
+  const showTransparent = transparencyEnabled && isGm && hasUpdatePermission && (interacting || inheritanceActive || transparent);
+  const showDisableHit = interactionEnabled && hasUpdatePermission && (interacting || inheritanceActive || disableHit);
+  const showLock = lockedEnabled && hasUpdatePermission && (interacting || inheritanceActive || locked);
+  const showVisibility = visibleEnabled && isGm && (interacting || inheritanceActive || !visible);
 
   return {
     showActionRow: showGeneralActions || showInheritance || showTransparent || showDisableHit || showLock || showVisibility,
@@ -56,15 +66,21 @@ export function getItemActionVisibility({
   };
 }
 
-export function getItemActionReservedSlots(visibility: ItemActionVisibility, hasUpdatePermission: boolean) {
+export function getItemActionReservedSlots(visibility: ItemActionVisibility, hasUpdatePermission: boolean, enabled = {
+  manageInheritance: true,
+  transparency: true,
+  interaction: true,
+  locked: true,
+  visible: true,
+}) {
   const visibleSlots = [
     visibility.showGeneralActions,
     visibility.showGeneralActions && hasUpdatePermission,
-    visibility.showInheritance,
-    visibility.showTransparent,
-    visibility.showDisableHit,
-    visibility.showLock,
-    visibility.showVisibility,
+    ...(enabled.manageInheritance ? [visibility.showInheritance] : []),
+    ...(enabled.transparency ? [visibility.showTransparent] : []),
+    ...(enabled.interaction ? [visibility.showDisableHit] : []),
+    ...(enabled.locked ? [visibility.showLock] : []),
+    ...(enabled.visible ? [visibility.showVisibility] : []),
   ];
   const firstVisible = visibleSlots.indexOf(true);
   return firstVisible < 0 ? 0 : visibleSlots.length - firstVisible;

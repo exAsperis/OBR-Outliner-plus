@@ -26,6 +26,11 @@ function getTheme(theme?: Theme) {
       borderRadius: 16,
     },
     components: {
+      MuiTooltip: {
+        defaultProps: {
+          disableInteractive: true,
+        },
+      },
       MuiButtonBase: {
         defaultProps: {
           disableRipple: true,

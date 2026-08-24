@@ -10,7 +10,7 @@ const Rays = () => <path
 
 export const TransparentIcon = createSvgIcon(<Rays />, "Transparent");
 
-export const OpaqueIcon = createSvgIcon(<>
-  <Rays />
-  <path d="M4.25 19.75 19.75 4.25" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-</>, "Opaque");
+export const OpaqueIcon = createSvgIcon(
+  <circle cx="12" cy="12" r="5.5" fill="currentColor" />,
+  "Opaque",
+);

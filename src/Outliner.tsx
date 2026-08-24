@@ -98,6 +98,7 @@ export function Outliner() {
     <Stack
       height="100vh"
       sx={{
+        bgcolor: "background.default",
         ".MuiCardHeader-action": {
           mr: searchExpanded ? 0 : undefined,
           flexShrink: searchExpanded ? 1 : undefined,

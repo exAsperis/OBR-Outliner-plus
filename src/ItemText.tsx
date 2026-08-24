@@ -3,6 +3,7 @@ import { Item, isShape } from "@owlbear-rodeo/sdk";
 import { useMemo } from "react";
 import { useOwlbearStore } from "./useOwlbearStore";
 import { Textable, capitalize, isTextable, toPlainText } from "./helpers";
+import { OverflowTooltipText } from "./OverflowTooltipText";
 
 export function ItemText({ item }: { item: Item }) {
   const role = useOwlbearStore((state) => state.role);
@@ -24,7 +25,7 @@ export function ItemText({ item }: { item: Item }) {
     return <TextableText item={item} name={name} />;
   } else {
     return (
-      <ListItemText sx={{ minWidth: 0 }} primary={name} primaryTypographyProps={{ noWrap: true }} />
+      <ListItemText sx={{ minWidth: 0 }} primary={<OverflowTooltipText text={name} />} />
     );
   }
 }
@@ -41,8 +42,7 @@ function TextableText({ item, name }: { item: Textable; name: string }) {
   return (
     <ListItemText
       sx={{ minWidth: 0 }}
-      primaryTypographyProps={{ noWrap: true }}
-      primary={plainText || name}
+      primary={<OverflowTooltipText text={plainText || name} />}
     />
   );
 }

@@ -34,6 +34,7 @@ import { SendMenuButton } from "./SendMenuButton";
 import { getLayerPropertyState } from "./layerPropertyState";
 import { captureAggregateState, getGroupRule, getItemRule, getNativeRule, inheritanceLabel, type StatefulProperty } from "./stateInheritance";
 import { setGroupProperty, setScopeInheritedProperty, toggleScopeInheritance, type RuleScope } from "./virtualLayerService";
+import { OverflowTooltipText } from "./OverflowTooltipText";
 
 const NATIVE_LAYER_HEADER_HEIGHT = 40;
 
@@ -73,7 +74,7 @@ export function ItemList(props: Props) {
   return <Box component="section" sx={{ position: "relative" }}>
     <ListItemButton dense onClick={() => setOpen(!open)} divider aria-expanded={open} sx={{ position: "sticky", top: 0, zIndex: 3, minHeight: `${NATIVE_LAYER_HEADER_HEIGHT}px`, bgcolor: "background.paper", color: selected ? "primary.main" : undefined, borderLeft: "3px solid", borderLeftColor: selected ? "primary.main" : "transparent" }}>
       <ListItemIcon sx={{ color: selected ? "primary.main" : "text.secondary", minWidth: "28px", "& svg": { fontSize: "1.25rem" } }}><LayerIcon layer={layer} /></ListItemIcon>
-      <ListItemText primary={layerHeading} sx={{ minWidth: 0 }} primaryTypographyProps={{ noWrap: true }} />
+      <ListItemText primary={<OverflowTooltipText text={layerHeading} />} sx={{ minWidth: 0 }} />
       {props.role === "GM" && <Stack direction="row" alignItems="center" flexShrink={0}>
         {!props.searching && <Tooltip title="Create virtual layer" placement="left" disableInteractive><IconButton size="small" aria-label={`Create virtual layer in ${layerName}`} onClick={(event) => { event.stopPropagation(); props.onCreate(); }}><AddIcon fontSize="small" /></IconButton></Tooltip>}
         <LayerPropertyControls items={nativeItems} scope={{ kind: "native", layer }} fog={layer === "FOG"} />
@@ -94,15 +95,18 @@ export function ItemList(props: Props) {
 
 function Group({ definition, items, role, searching, groupDropPosition, onRename, onDelete, onGroupStack, renderItems }: Props & { definition: VirtualLayerDefinition; renderItems: (items: Item[]) => React.ReactNode }) {
   const [open, setOpen] = useState(true);
+  const [hovering, setHovering] = useState(false);
+  const [focusWithin, setFocusWithin] = useState(false);
+  const [sendMenuOpen, setSendMenuOpen] = useState(false);
   const selected = useOwlbearStore((state) => items.some((item) => state.selection?.includes(item.id)));
   const linked = useOwlbearStore((state) => isLinkedVirtualLayer(state.virtualLayers, definition.id));
   const unassigned = definition.id === UNASSIGNED_ID;
   const groupHeading = `${definition.name} [${items.length}]`;
-  const row = <ListItemButton dense onClick={() => setOpen(!open)} aria-expanded={open} sx={{ pl: 3, height: `${NATIVE_LAYER_HEADER_HEIGHT}px`, bgcolor: "action.hover", "&:hover": { bgcolor: "action.selected" }, color: selected ? "primary.main" : undefined, borderLeft: "3px solid", borderLeftColor: selected ? "primary.main" : "transparent" }}>
-    <ListItemText primary={<Stack direction="row" alignItems="center" spacing={0.5}>{linked && <Tooltip title="Linked virtual layer"><LinkIcon aria-label="Linked virtual layer" sx={{ fontSize: 16, flexShrink: 0 }} /></Tooltip>}<Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis" }}>{groupHeading}</Box></Stack>} sx={{ minWidth: 0 }} primaryTypographyProps={{ noWrap: true, fontStyle: "italic" }} />
+  const showNonStateActions = hovering || focusWithin || sendMenuOpen;
+  const row = <ListItemButton dense onClick={() => setOpen(!open)} aria-expanded={open} onPointerOver={(event) => { if (event.pointerType === "mouse") setHovering(true); }} onPointerLeave={(event) => { if (event.pointerType === "mouse") setHovering(false); }} onFocus={() => setFocusWithin(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setFocusWithin(false); }} sx={{ pl: 3, height: `${NATIVE_LAYER_HEADER_HEIGHT}px`, bgcolor: "background.default", color: selected ? "primary.main" : undefined, borderLeft: "3px solid", borderLeftColor: selected ? "primary.main" : "transparent" }}>
+    <ListItemText primary={<Stack direction="row" alignItems="center" spacing={0.5}>{linked && <Tooltip title="Linked virtual layer"><LinkIcon aria-label="Linked virtual layer" sx={{ fontSize: 16, flexShrink: 0 }} /></Tooltip>}<Box sx={{ minWidth: 0, flex: 1 }}><OverflowTooltipText text={groupHeading} /></Box></Stack>} sx={{ minWidth: 0 }} primaryTypographyProps={{ fontStyle: "italic" }} />
     {role === "GM" && <Stack direction="row" alignItems="center" flexShrink={0}>
-      {!unassigned && <><Tooltip title="Edit"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onRename(definition); }}><EditIcon fontSize="small" /></IconButton></Tooltip><Tooltip title="Delete"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(definition); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip></>}
-      <SendMenuButton itemIds={items.map((item) => item.id)} allowStackWhenEmpty onStack={(operation) => onGroupStack(definition.obrLayer, definition.id, operation)} confirmLayerMove={definition.name} />
+      {showNonStateActions && <>{!unassigned && <><Tooltip title="Edit"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onRename(definition); }}><EditIcon fontSize="small" /></IconButton></Tooltip><Tooltip title="Delete"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(definition); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip></>}<SendMenuButton itemIds={items.map((item) => item.id)} allowStackWhenEmpty onStack={(operation) => onGroupStack(definition.obrLayer, definition.id, operation)} confirmLayerMove={definition.name} onOpenChange={setSendMenuOpen} /></>}
       <LayerPropertyControls items={items} scope={{ kind: "group", layer: definition.obrLayer, groupId: definition.id }} fog={definition.obrLayer === "FOG"} linked={linked} />
     </Stack>}
   </ListItemButton>;

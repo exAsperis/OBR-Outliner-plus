@@ -274,7 +274,7 @@ export const ItemListItem = memo(function ({
           borderRadius: "12px",
           backgroundColor: dragging
             ? `${theme.palette.primary.main} !important`
-            : undefined,
+            : "background.default",
           boxShadow: dragging ? theme.shadows[5] : undefined,
           color: dragging
             ? `${theme.palette.primary.contrastText} !important`

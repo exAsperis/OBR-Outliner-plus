@@ -18,6 +18,7 @@ export function Header({
       <CardHeader
         title={title}
         action={action}
+        sx={{ bgcolor: "background.paper" }}
         titleTypographyProps={{
           sx: {
             fontSize: "1.125rem",

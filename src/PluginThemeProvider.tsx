@@ -31,13 +31,6 @@ function getTheme(theme?: Theme) {
           disableRipple: true,
         },
       },
-      MuiCssBaseline: {
-        styleOverrides: {
-          body: {
-            backgroundColor: "initial",
-          },
-        },
-      },
       MuiOutlinedInput: {
         styleOverrides: {
           input: {

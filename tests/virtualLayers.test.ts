@@ -12,6 +12,7 @@ import {
   hasBoundaryViolation,
   isLinkedVirtualLayer,
   linkedVirtualLayers,
+  mutuallyExclusiveVirtualLayers,
   parseVirtualLayerState,
   orderedGroupIds,
   renameVirtualLayer,
@@ -56,6 +57,20 @@ test("allows duplicate trimmed case-insensitive names and derives links scene-wi
   assert.deepEqual(linkedVirtualLayers(renamed, "roofs").map((layer) => layer.id), ["roofs", "pcs", "duplicate"]);
   assert.equal(isLinkedVirtualLayer(renameVirtualLayer(renamed, "pcs", "Heroes"), "pcs"), false);
   assert.throws(() => createVirtualLayer(state, "PROP", " ", "empty"), /empty/);
+});
+
+test("groups numbered virtual-layer names into mutually exclusive families", () => {
+  const numbered: VirtualLayerState = { version: 2, layers: [
+    { id: "ground", name: "0: Castle", obrLayer: "MAP", order: 0 },
+    { id: "first", name: "1: Castle", obrLayer: "PROP", order: 0 },
+    { id: "first-linked", name: "1: Castle", obrLayer: "DRAWING", order: 0 },
+    { id: "basement", name: "-1: castle", obrLayer: "MAP", order: 1 },
+    { id: "other", name: "2: Village", obrLayer: "MAP", order: 2 },
+    { id: "plain", name: "Castle", obrLayer: "MAP", order: 3 },
+  ] };
+  assert.deepEqual(mutuallyExclusiveVirtualLayers(numbered, "first").map((layer) => layer.id), ["ground", "basement"]);
+  assert.deepEqual(mutuallyExclusiveVirtualLayers(numbered, "first-linked").map((layer) => layer.id), ["ground", "basement"]);
+  assert.deepEqual(mutuallyExclusiveVirtualLayers(numbered, "plain"), []);
 });
 
 test("parses valid definitions and ignores malformed entries", () => {

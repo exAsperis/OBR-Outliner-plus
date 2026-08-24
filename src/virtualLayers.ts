@@ -133,6 +133,22 @@ export function isLinkedVirtualLayer(state: VirtualLayerState, id: string) {
   return linkedVirtualLayers(state, id).length > 1;
 }
 
+function numberedVirtualLayerName(name: string) {
+  const match = name.match(/^\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*:\s*(.+?)\s*$/);
+  if (!match) return undefined;
+  return { number: Number(match[1]), family: match[2].toLocaleLowerCase() };
+}
+
+export function mutuallyExclusiveVirtualLayers(state: VirtualLayerState, id: string) {
+  const target = state.layers.find((layer) => layer.id === id);
+  const numbered = target && numberedVirtualLayerName(target.name);
+  if (!numbered) return [];
+  return state.layers.filter((layer) => {
+    const candidate = numberedVirtualLayerName(layer.name);
+    return candidate && candidate.family === numbered.family && candidate.number !== numbered.number;
+  });
+}
+
 function validateName(name: string) {
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Virtual layer name cannot be empty.");

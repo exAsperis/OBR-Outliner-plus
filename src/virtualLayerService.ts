@@ -13,6 +13,7 @@ import {
   createVirtualLayer,
   deleteVirtualLayer,
   getAssignmentId,
+  mutuallyExclusiveVirtualLayers,
   parseVirtualLayerState,
   renameVirtualLayer,
   reorderVirtualLayer,
@@ -201,11 +202,11 @@ export function setScopeProperty(scope: RuleScope, property: StatefulProperty, v
     const state = await getState();
     const items = await OBR.scene.items.getItems();
     let next = state;
-    const directIds = new Set<string>();
+    const directValues = new Map<string, boolean>();
     if (scope.kind === "native") {
       const enforce = getNativeRule(state, scope.layer);
       if (Object.prototype.hasOwnProperty.call(enforce, property)) next = withNativeInstructions(state, scope.layer, { ...enforce, [property]: value });
-      else directNativeItemIds(items, state, scope.layer).forEach((id) => directIds.add(id));
+      else directNativeItemIds(items, state, scope.layer).forEach((id) => directValues.set(id, value));
     } else {
       const config = getGroupInheritance(state, scope.layer, scope.groupId);
       if (config.mode === "independent" && Object.prototype.hasOwnProperty.call(config.enforce, property)) {
@@ -213,17 +214,29 @@ export function setScopeProperty(scope: RuleScope, property: StatefulProperty, v
       } else if (Object.prototype.hasOwnProperty.call(getGroupEffectiveInstructions(state, scope.layer, scope.groupId), property)) {
         return;
       } else if (scope.groupId !== "__unassigned__") {
-        linkedDirectPropertyItemIds(items, state, scope.groupId, property).forEach((id) => directIds.add(id));
+        linkedDirectPropertyItemIds(items, state, scope.groupId, property).forEach((id) => directValues.set(id, value));
       } else {
-        directGroupItemIds(items, state, scope.layer, scope.groupId).forEach((id) => directIds.add(id));
+        directGroupItemIds(items, state, scope.layer, scope.groupId).forEach((id) => directValues.set(id, value));
+      }
+      if (property === "transparent" && !value && scope.groupId !== "__unassigned__") {
+        for (const sibling of mutuallyExclusiveVirtualLayers(state, scope.groupId)) {
+          const siblingScope = { kind: "group" as const, layer: sibling.obrLayer, groupId: sibling.id };
+          const siblingConfig = getGroupInheritance(state, sibling.obrLayer, sibling.id);
+          if (siblingConfig.mode === "independent" && Object.prototype.hasOwnProperty.call(siblingConfig.enforce, "transparent")) {
+            next = withGroupInheritance(next, siblingScope, { ...siblingConfig, enforce: { ...siblingConfig.enforce, transparent: true } });
+          } else if (!Object.prototype.hasOwnProperty.call(getGroupEffectiveInstructions(state, sibling.obrLayer, sibling.id), "transparent")) {
+            linkedDirectPropertyItemIds(items, state, sibling.id, "transparent").forEach((id) => directValues.set(id, true));
+          }
+        }
       }
     }
     if (next !== state) await setState(next);
-    if (directIds.size) await OBR.scene.items.updateItems([...directIds], (draft) => {
+    if (directValues.size) await OBR.scene.items.updateItems([...directValues.keys()], (draft) => {
       for (const item of draft) {
+        const directValue = directValues.get(item.id) ?? value;
         if (property === "transparent") {
-          if (value) activateTransparency(item, "direct"); else restoreTransparency(item);
-        } else item[property] = value;
+          if (directValue) activateTransparency(item, "direct"); else restoreTransparency(item);
+        } else item[property] = directValue;
       }
     });
     await enforceStateInheritance(next);

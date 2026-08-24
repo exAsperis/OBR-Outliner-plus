@@ -13,8 +13,12 @@ import {
   createVirtualLayer,
   deleteVirtualLayer,
   getAssignmentId,
+  isLinkedVirtualLayer,
+  linkedVirtualLayers,
   parseVirtualLayerState,
   renameVirtualLayer,
+  resolveGroupId,
+  setVirtualLayerRules,
   reorderVirtualLayer,
   reorderStackingGroup,
   stackGroup,
@@ -23,6 +27,7 @@ import {
 } from "./virtualLayers";
 import {
   calculateInheritanceUpdates,
+  captureAggregateState,
   getGroupRule,
   getItemParentRule,
   getItemRule,
@@ -71,14 +76,27 @@ async function normalizeLayers(layers: Iterable<Item["layer"]>, state?: VirtualL
 export function addVirtualLayer(obrLayer: Item["layer"], name: string) {
   return serialized(async () => {
     const state = await getState();
-    const next = createVirtualLayer(state, obrLayer, name, `vl_${crypto.randomUUID()}`);
+    const items = await OBR.scene.items.getItems();
+    const id = `vl_${crypto.randomUUID()}`;
+    let next = createVirtualLayer(state, obrLayer, name, id);
+    const source = linkedVirtualLayers(next, id).find((layer) => layer.id !== id);
+    if (source) next = linkMatchingLayers(next, source.id, items);
     await setState(next);
+    await enforceStateInheritance(next);
     await normalizeLayers([obrLayer], next);
   });
 }
 
 export function updateVirtualLayerName(id: string, name: string) {
-  return serialized(async () => setState(renameVirtualLayer(await getState(), id, name)));
+  return serialized(async () => {
+    const state = await getState();
+    const items = await OBR.scene.items.getItems();
+    let next = renameVirtualLayer(state, id, name);
+    const source = linkedVirtualLayers(next, id).find((layer) => layer.id !== id);
+    if (source) next = linkMatchingLayers(next, source.id, items);
+    await setState(next);
+    await enforceStateInheritance(next);
+  });
 }
 
 export function moveVirtualLayer(id: string, targetIndex: number) {
@@ -144,9 +162,26 @@ function withRule(state: VirtualLayerState, scope: RuleScope, rule?: InheritedIt
   return { ...state, inheritance: inheritance.native || inheritance.virtual || inheritance.unassigned ? inheritance : undefined };
 }
 
+function displayedGroupState(state: VirtualLayerState, id: string, items: Item[]): InheritedItemState {
+  const definition = state.layers.find((layer) => layer.id === id);
+  if (!definition) throw new Error("Virtual layer does not exist.");
+  const eligible = items.filter((item) => item.layer === definition.obrLayer &&
+    resolveGroupId(item, state) === id && !getItemRule(item));
+  return getGroupRule(state, definition.obrLayer, id) ??
+    getNativeRule(state, definition.obrLayer) ?? captureAggregateState(eligible);
+}
+
+function linkMatchingLayers(state: VirtualLayerState, sourceId: string, items: Item[]) {
+  const linked = linkedVirtualLayers(state, sourceId);
+  if (linked.length < 2) return state;
+  const rule = displayedGroupState(state, sourceId, items);
+  return setVirtualLayerRules(state, linked.map((layer) => layer.id), rule);
+}
+
 export function toggleScopeInheritance(scope: RuleScope, fallback: InheritedItemState) {
   return serialized(async () => {
     const state = await getState();
+    if (scope.kind === "group" && isLinkedVirtualLayer(state, scope.groupId)) return;
     const next = withRule(state, scope, localRule(state, scope) ? undefined : parentRule(state, scope) ?? fallback);
     await setState(next);
     await enforceStateInheritance(next);
@@ -158,7 +193,11 @@ export function setScopeInheritedProperty(scope: RuleScope, property: StatefulPr
     const state = await getState();
     const current = localRule(state, scope);
     if (!current) return;
-    const next = withRule(state, scope, { ...current, [property]: value });
+    const targets = scope.kind === "group" ? linkedVirtualLayers(state, scope.groupId) : [];
+    const nextRule = { ...current, [property]: value };
+    const next = targets.length > 1
+      ? setVirtualLayerRules(state, targets.map((layer) => layer.id), nextRule)
+      : withRule(state, scope, nextRule);
     await setState(next);
     await enforceStateInheritance(next);
   });

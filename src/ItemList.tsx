@@ -8,6 +8,7 @@ import UnlockIcon from "@mui/icons-material/LockOpenRounded";
 import ClickableIcon from "@mui/icons-material/TouchAppRounded";
 import ClickThroughIcon from "@mui/icons-material/DoNotTouchRounded";
 import InheritanceIcon from "@mui/icons-material/AccountTreeRounded";
+import LinkIcon from "@mui/icons-material/LinkRounded";
 import FogCutOnIcon from "./icons/other/FogCutOn";
 import FogCutOffIcon from "./icons/other/FogCutOff";
 import Collapse from "@mui/material/Collapse";
@@ -27,7 +28,7 @@ import { SortableItem } from "./SortableItem";
 import { capitalize } from "./helpers";
 import type { StackOperation } from "./stacking";
 import { useOwlbearStore } from "./useOwlbearStore";
-import { resolveGroupId, UNASSIGNED_ID, type VirtualLayerDefinition } from "./virtualLayers";
+import { isLinkedVirtualLayer, resolveGroupId, UNASSIGNED_ID, type VirtualLayerDefinition } from "./virtualLayers";
 import type { DropPosition } from "./dragPosition";
 import { SendMenuButton } from "./SendMenuButton";
 import { getLayerPropertyState } from "./layerPropertyState";
@@ -94,14 +95,15 @@ export function ItemList(props: Props) {
 function Group({ definition, items, role, searching, groupDropPosition, onRename, onDelete, onGroupStack, renderItems }: Props & { definition: VirtualLayerDefinition; renderItems: (items: Item[]) => React.ReactNode }) {
   const [open, setOpen] = useState(true);
   const selected = useOwlbearStore((state) => items.some((item) => state.selection?.includes(item.id)));
+  const linked = useOwlbearStore((state) => isLinkedVirtualLayer(state.virtualLayers, definition.id));
   const unassigned = definition.id === UNASSIGNED_ID;
   const groupHeading = `${definition.name} [${items.length}]`;
   const row = <ListItemButton dense onClick={() => setOpen(!open)} aria-expanded={open} sx={{ pl: 3, height: `${NATIVE_LAYER_HEADER_HEIGHT}px`, bgcolor: "action.hover", "&:hover": { bgcolor: "action.selected" }, color: selected ? "primary.main" : undefined, borderLeft: "3px solid", borderLeftColor: selected ? "primary.main" : "transparent" }}>
-    <ListItemText primary={groupHeading} sx={{ minWidth: 0 }} primaryTypographyProps={{ noWrap: true, fontStyle: "italic" }} />
+    <ListItemText primary={<Stack direction="row" alignItems="center" spacing={0.5}>{linked && <Tooltip title="Linked virtual layer"><LinkIcon aria-label="Linked virtual layer" sx={{ fontSize: 16, flexShrink: 0 }} /></Tooltip>}<Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis" }}>{groupHeading}</Box></Stack>} sx={{ minWidth: 0 }} primaryTypographyProps={{ noWrap: true, fontStyle: "italic" }} />
     {role === "GM" && <Stack direction="row" alignItems="center" flexShrink={0}>
       {!unassigned && <><Tooltip title="Edit"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onRename(definition); }}><EditIcon fontSize="small" /></IconButton></Tooltip><Tooltip title="Delete"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(definition); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip></>}
       <SendMenuButton itemIds={items.map((item) => item.id)} allowStackWhenEmpty onStack={(operation) => onGroupStack(definition.obrLayer, definition.id, operation)} confirmLayerMove={definition.name} />
-      <LayerPropertyControls items={items} scope={{ kind: "group", layer: definition.obrLayer, groupId: definition.id }} fog={definition.obrLayer === "FOG"} />
+      <LayerPropertyControls items={items} scope={{ kind: "group", layer: definition.obrLayer, groupId: definition.id }} fog={definition.obrLayer === "FOG"} linked={linked} />
     </Stack>}
   </ListItemButton>;
   return <>
@@ -110,7 +112,7 @@ function Group({ definition, items, role, searching, groupDropPosition, onRename
   </>;
 }
 
-function LayerPropertyControls({ items, scope, fog = false }: { items: Item[]; scope: RuleScope; fog?: boolean }) {
+function LayerPropertyControls({ items, scope, fog = false, linked = false }: { items: Item[]; scope: RuleScope; fog?: boolean; linked?: boolean }) {
   const state = useOwlbearStore((store) => store.virtualLayers);
   const localRule = scope.kind === "native" ? getNativeRule(state, scope.layer) : getGroupRule(state, scope.layer, scope.groupId);
   const parentRule = scope.kind === "group" ? getNativeRule(state, scope.layer) : undefined;
@@ -136,7 +138,7 @@ function LayerPropertyControls({ items, scope, fog = false }: { items: Item[]; s
     ? setScopeInheritedProperty(scope, property, value)
     : setGroupProperty(eligible.map((item) => item.id), property, value);
   return <>
-    <Tooltip title={inheritanceLabel(Boolean(localRule), Boolean(parentRule))}><IconButton size="small" aria-label={inheritanceLabel(Boolean(localRule), Boolean(parentRule))} color={inheritanceColor} onClick={(event) => { event.stopPropagation(); void toggleScopeInheritance(scope, parentRule ?? captureAggregateState(eligible)); }}><InheritanceIcon fontSize="small" /></IconButton></Tooltip>
+    <Tooltip title={linked ? "Linked virtual layers always enforce inheritance" : inheritanceLabel(Boolean(localRule), Boolean(parentRule))}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" aria-label={linked ? "Inheritance enforced for linked virtual layer" : inheritanceLabel(Boolean(localRule), Boolean(parentRule))} color={inheritanceColor} disabled={linked} sx={linked ? { "&.Mui-disabled": { color: "warning.main" } } : undefined} onClick={(event) => { event.stopPropagation(); void toggleScopeInheritance(scope, parentRule ?? captureAggregateState(eligible)); }}><InheritanceIcon fontSize="small" /></IconButton></Box></Tooltip>
     <Tooltip title={displayed.disableHit ? "Enable clicks for all" : "Disable clicks for all"}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" aria-label={displayed.disableHit ? "Enable clicks for all" : "Disable clicks for all"} color={stateColor("disableHit", mixedDisableHit)} disabled={disabled} sx={disabledSx} onClick={(event) => { event.stopPropagation(); void setProperty("disableHit", !displayed.disableHit); }}>{displayed.disableHit ? <ClickThroughIcon fontSize="small" /> : <ClickableIcon fontSize="small" />}</IconButton></Box></Tooltip>
     <Tooltip title={displayed.locked ? "Unlock all" : "Lock all"}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" color={stateColor("locked", mixedLocked)} disabled={disabled} sx={disabledSx} onClick={(event) => { event.stopPropagation(); void setProperty("locked", !displayed.locked); }}>{displayed.locked ? <LockedIcon fontSize="small" /> : <UnlockIcon fontSize="small" />}</IconButton></Box></Tooltip>
     <Tooltip title={visibilityAction}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" color={stateColor("visible", mixedVisible)} disabled={disabled} sx={disabledSx} onClick={(event) => { event.stopPropagation(); void setProperty("visible", !displayed.visible); }}>{fog ? displayed.visible ? <FogCutOffIcon fontSize="small" /> : <FogCutOnIcon fontSize="small" /> : displayed.visible ? <VisibleIcon fontSize="small" /> : <HiddenIcon fontSize="small" />}</IconButton></Box></Tooltip>

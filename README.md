@@ -81,6 +81,9 @@ Other source changes are hot-reloaded by Vite during development.
   layer menu.
 - Create scene-specific virtual layers inside native Owlbear layers, with strict
   stacking boundaries and independent item ordering.
+- Give virtual layers the same name to link their click-through, locked, and
+  visibility states across the scene. Linked layers show a chain glyph and
+  enforce their shared state independently of their native parent layers.
 - Rename, reorder, hide, lock, make click-through, and delete virtual layers
   without changing or deleting their objects.
 - Cascade click-through, locked, and visibility states from native layers

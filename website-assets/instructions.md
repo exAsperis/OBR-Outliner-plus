@@ -23,6 +23,8 @@ Drag a virtual-layer heading to change its position, or use its Send menu. Drag 
 
 Virtual layers do not override Owlbear Rodeo's layer order. For example, an item in the Props layer cannot be placed above an item in the Characters layer by using a virtual layer.
 
+Virtual layers with the same name are linked across the Scene, even when they belong to different Owlbear layers. A chain glyph appears beside each linked name. Creating or renaming a layer to a matching name copies the existing linked state, and later click-through, locked, or visibility changes apply to every layer in that link. Rename a linked layer to a different name to unlink it while preserving its current state.
+
 ## Quick actions
 
 Game Masters can use the controls in the Outliner+ panel to manage Scene items. Item controls appear when an item is selected or hovered. Actions that update an item are available only when the current player has permission to update it.
@@ -36,6 +38,8 @@ Creates a virtual layer inside the selected Owlbear layer. Creating the first vi
 The inheritance control appears immediately to the left of Click-through on Owlbear layers, virtual layers, Unassigned groups, and individual items. Enabling inheritance stores that level's click-through, locked, and visibility values and applies them continuously to its contents, including items added or moved there later.
 
 Inheritance cascades from an Owlbear layer to its virtual or Unassigned groups and then to individual items. A gold control is inherited or locally enforced. Inherited state buttons are disabled; select *Override inherited state* to create an editable local rule. A red inheritance control marks a local override beneath another rule, and an individual red state button differs from its parent. Removing an override returns that level to its nearest parent rule.
+
+Linked virtual layers always enforce their shared state, blocking inheritance from their parent Owlbear layers. Their inheritance controls are disabled until they are unlinked. Individual child items can still override the linked state normally.
 
 When no parent rule exists, inheritance captures the states shown by the heading. Empty layers start clickable, unlocked, and visible. Mixed ordinary states use blue rather than gold. Bulk state actions skip children that have more-specific overrides.
 

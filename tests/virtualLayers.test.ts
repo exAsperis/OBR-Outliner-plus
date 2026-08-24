@@ -10,6 +10,8 @@ import {
   deleteVirtualLayer,
   desiredOrder,
   hasBoundaryViolation,
+  isLinkedVirtualLayer,
+  linkedVirtualLayers,
   parseVirtualLayerState,
   orderedGroupIds,
   renameVirtualLayer,
@@ -45,9 +47,14 @@ test("creates, renames, deletes, and reorders layer definitions", () => {
   assert.deepEqual(deleteVirtualLayer(state, "roofs").layers.filter((entry) => entry.obrLayer === "PROP").map((entry) => [entry.id, entry.order]), [["walls", 0]]);
 });
 
-test("requires globally unique trimmed case-insensitive names", () => {
-  assert.throws(() => createVirtualLayer(state, "DRAWING", " roofs ", "duplicate"), /unique/);
-  assert.throws(() => renameVirtualLayer(state, "pcs", "WALLS"), /unique/);
+test("allows duplicate trimmed case-insensitive names and derives links scene-wide", () => {
+  const duplicate = createVirtualLayer(state, "DRAWING", " roofs ", "duplicate");
+  assert.equal(duplicate.layers.at(-1)?.name, "roofs");
+  assert.deepEqual(linkedVirtualLayers(duplicate, "roofs").map((layer) => layer.id), ["roofs", "duplicate"]);
+  assert.equal(isLinkedVirtualLayer(duplicate, "duplicate"), true);
+  const renamed = renameVirtualLayer(duplicate, "pcs", "ROOFS");
+  assert.deepEqual(linkedVirtualLayers(renamed, "roofs").map((layer) => layer.id), ["roofs", "pcs", "duplicate"]);
+  assert.equal(isLinkedVirtualLayer(renameVirtualLayer(renamed, "pcs", "Heroes"), "pcs"), false);
   assert.throws(() => createVirtualLayer(state, "PROP", " ", "empty"), /empty/);
 });
 

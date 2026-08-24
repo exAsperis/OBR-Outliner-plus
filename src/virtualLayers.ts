@@ -104,14 +104,28 @@ export function stateFromMetadata(metadata: Record<string, unknown>) {
   return parseVirtualLayerState(metadata[VIRTUAL_LAYERS_METADATA_KEY]);
 }
 
-const normalizedName = (name: string) => name.trim().toLocaleLowerCase();
+export const normalizedVirtualLayerName = (name: string) => name.trim().toLocaleLowerCase();
 
-function validateName(state: VirtualLayerState, name: string, exceptId?: string) {
+export function linkedVirtualLayers(state: VirtualLayerState, id: string) {
+  const target = state.layers.find((layer) => layer.id === id);
+  if (!target) return [];
+  const normalized = normalizedVirtualLayerName(target.name);
+  return state.layers.filter((layer) => normalizedVirtualLayerName(layer.name) === normalized);
+}
+
+export function isLinkedVirtualLayer(state: VirtualLayerState, id: string) {
+  return linkedVirtualLayers(state, id).length > 1;
+}
+
+export function setVirtualLayerRules(state: VirtualLayerState, ids: Iterable<string>, rule: InheritedItemState): VirtualLayerState {
+  const virtual = { ...state.inheritance?.virtual };
+  for (const id of ids) if (state.layers.some((layer) => layer.id === id)) virtual[id] = rule;
+  return { ...state, inheritance: { ...state.inheritance, virtual } };
+}
+
+function validateName(name: string) {
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Virtual layer name cannot be empty.");
-  if (state.layers.some((layer) => layer.id !== exceptId && normalizedName(layer.name) === normalizedName(trimmed))) {
-    throw new Error("Virtual layer names must be unique within the scene.");
-  }
   return trimmed;
 }
 
@@ -139,7 +153,7 @@ function applyGroupOrder(state: VirtualLayerState, obrLayer: Item["layer"], grou
 }
 
 export function createVirtualLayer(state: VirtualLayerState, obrLayer: Item["layer"], name: string, id: string): VirtualLayerState {
-  const layer: VirtualLayerDefinition = { id, name: validateName(state, name), obrLayer, order: orderedForLayer(state, obrLayer).length };
+  const layer: VirtualLayerDefinition = { id, name: validateName(name), obrLayer, order: orderedForLayer(state, obrLayer).length };
   const next = { ...state, layers: [...state.layers, layer] };
   const groups = orderedGroupIds(next, obrLayer).filter((groupId) => groupId !== id);
   const unassignedIndex = groups.indexOf(UNASSIGNED_ID);
@@ -149,7 +163,7 @@ export function createVirtualLayer(state: VirtualLayerState, obrLayer: Item["lay
 
 export function renameVirtualLayer(state: VirtualLayerState, id: string, name: string): VirtualLayerState {
   if (!state.layers.some((entry) => entry.id === id)) throw new Error("Virtual layer does not exist.");
-  const validName = validateName(state, name, id);
+  const validName = validateName(name);
   return { ...state, layers: state.layers.map((entry) => entry.id === id ? { ...entry, name: validName } : entry) };
 }
 

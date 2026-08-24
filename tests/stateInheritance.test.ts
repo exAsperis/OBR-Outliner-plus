@@ -10,7 +10,7 @@ import {
   inheritanceLabel,
   parseItemInheritance,
 } from "../src/stateInheritance.ts";
-import { deleteVirtualLayer, parseVirtualLayerState, renameVirtualLayer, reorderVirtualLayer, type InheritedItemState, type VirtualLayerState } from "../src/virtualLayers.ts";
+import { createVirtualLayer, deleteVirtualLayer, parseVirtualLayerState, renameVirtualLayer, reorderVirtualLayer, setVirtualLayerRules, type InheritedItemState, type VirtualLayerState } from "../src/virtualLayers.ts";
 
 const native: InheritedItemState = { disableHit: false, locked: true, visible: true };
 const group: InheritedItemState = { disableHit: true, locked: false, visible: true };
@@ -83,4 +83,25 @@ test("preserves rules through edits and removes a deleted virtual-layer rule", (
   assert.deepEqual(reordered.inheritance, state.inheritance);
   const deleted = deleteVirtualLayer(reordered, "roofs");
   assert.deepEqual(deleted.inheritance, { native: { PROP: native }, unassigned: { PROP: native } });
+});
+
+test("installs and updates one shared rule across any number of linked layers", () => {
+  const withSecond = createVirtualLayer(state, "MAP", " roofs ", "map-roofs");
+  const withThird = createVirtualLayer(withSecond, "DRAWING", "ROOFS", "drawing-roofs");
+  const linked = setVirtualLayerRules(withThird, ["roofs", "map-roofs", "drawing-roofs"], local);
+  assert.deepEqual(linked.inheritance?.virtual, {
+    roofs: local,
+    "map-roofs": local,
+    "drawing-roofs": local,
+  });
+
+  const changed = { ...local, visible: true };
+  const propagated = setVirtualLayerRules(linked, ["roofs", "map-roofs", "drawing-roofs"], changed);
+  assert.deepEqual(propagated.inheritance?.virtual, {
+    roofs: changed,
+    "map-roofs": changed,
+    "drawing-roofs": changed,
+  });
+  const unlinked = renameVirtualLayer(propagated, "map-roofs", "Map Roofs");
+  assert.deepEqual(unlinked.inheritance?.virtual?.["map-roofs"], changed);
 });

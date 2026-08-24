@@ -36,7 +36,7 @@ export const EMPTY_VIRTUAL_LAYER_STATE: VirtualLayerState = { version: 1, layers
 const isLayer = (value: unknown): value is Item["layer"] =>
   typeof value === "string" && [
     "MAP", "GRID", "DRAWING", "PROP", "MOUNT", "CHARACTER", "ATTACHMENT",
-    "NOTE", "TEXT", "RULER", "FOG", "POINTER", "CONTROL", "POPOVER",
+    "NOTE", "TEXT", "RULER", "FOG", "POINTER", "POST_PROCESS", "CONTROL", "POPOVER",
   ].includes(value);
 
 export function parseVirtualLayerState(value: unknown): VirtualLayerState {

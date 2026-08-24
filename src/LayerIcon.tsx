@@ -11,7 +11,7 @@ import { TextIcon } from "./icons/layers/TextIcon";
 import { DrawingIcon } from "./icons/layers/DrawingIcon";
 import { PointerIcon } from "./icons/layers/PointerIcon";
 
-const ICONS: Record<Item["layer"], React.ReactNode> = {
+const ICONS: Record<string, React.ReactNode> = {
   MAP: <MapIcon />,
   ATTACHMENT: <AttachmentIcon />,
   CHARACTER: <CharacterIcon />,
@@ -22,6 +22,7 @@ const ICONS: Record<Item["layer"], React.ReactNode> = {
   MOUNT: <MountIcon />,
   NOTE: <NoteIcon />,
   POINTER: <PointerIcon />,
+  POST_PROCESS: null,
   POPOVER: null,
   PROP: <PropIcon />,
   RULER: <RulerIcon />,

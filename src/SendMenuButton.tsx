@@ -17,6 +17,7 @@ import { LayerIcon } from "./LayerIcon";
 import { useOwlbearStore } from "./useOwlbearStore";
 import { orderedGroupIds, UNASSIGNED_ID } from "./virtualLayers";
 import { assignItems } from "./virtualLayerService";
+import { useLayerDisplaySettings } from "./layerSettings";
 
 function LayerMoveIcon() {
   return <SvgIcon fontSize="small"><path d="m8 2 7 3.5L8 9 1 5.5 8 2ZM2.7 9.4 8 12l5.3-2.6L15 11l-7 3.5L1 11l1.7-1.6Zm0 5L8 17l5.3-2.6L15 16l-7 3.5L1 16l1.7-1.6ZM17 7l5 5-5 5v-3h-3v-4h3V7Z" /></SvgIcon>;
@@ -37,6 +38,7 @@ export function SendMenuButton({
 }) {
   const role = useOwlbearStore((state) => state.role);
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
+  const layerSettings = useLayerDisplaySettings();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [layerMenuAnchor, setLayerMenuAnchor] = useState<HTMLElement | null>(null);
   const [moving, setMoving] = useState(false);
@@ -105,7 +107,7 @@ export function SendMenuButton({
       MenuListProps={{ dense: true, "aria-label": "Destination layer" }}
       slotProps={{ paper: { sx: { width: "max-content", maxWidth: "calc(100vw - 16px)" } } }}
     >
-      {getOutlinerLayers(role).flatMap((layer) => {
+      {getOutlinerLayers(role, layerSettings.enabledLayers).flatMap((layer) => {
         const definitions = virtualLayers.layers.filter((entry) => entry.obrLayer === layer);
         return [
           <MenuItem key={layer} disabled={moving} onClick={() => void move(layer, undefined, formatLayerName(layer))}>

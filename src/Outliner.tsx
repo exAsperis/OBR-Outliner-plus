@@ -3,6 +3,7 @@ import Stack from "@mui/material/Stack";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
+import SettingsIcon from "@mui/icons-material/SettingsRounded";
 import OBR from "@owlbear-rodeo/sdk";
 import { useEffect, useRef, useState } from "react";
 import SimpleBar from "simplebar-react";
@@ -12,6 +13,7 @@ import { Items } from "./Items";
 import { SearchField } from "./SearchField";
 import { useOwlbearStore } from "./useOwlbearStore";
 import { itemHasPermission } from "./hasPermission";
+import { SettingsPanel } from "./SettingsPanel";
 
 export function Outliner() {
   const listRef = useRef<HTMLUListElement>(null);
@@ -41,6 +43,7 @@ export function Outliner() {
 
   const [search, setSearch] = useState("");
   const [searchExpanded, setSearchExpanded] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     // When a common key is pressed ensure the action is performed in OBR
@@ -112,6 +115,17 @@ export function Outliner() {
               expanded={searchExpanded}
               onExpand={setSearchExpanded}
             />
+            <Tooltip title="Settings" disableInteractive>
+              <IconButton
+                aria-label="Settings"
+                aria-pressed={settingsOpen}
+                aria-expanded={settingsOpen}
+                aria-controls={settingsOpen ? "outliner-settings" : undefined}
+                onClick={() => setSettingsOpen((open) => !open)}
+              >
+                <SettingsIcon />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Help" disableInteractive>
               <IconButton
                 component="a"
@@ -128,6 +142,7 @@ export function Outliner() {
       />
       <SimpleBar style={{ maxHeight: "calc(100vh - 64px)" }}>
         <List ref={listRef} disablePadding>
+          {settingsOpen && <SettingsPanel />}
           <Items search={search} />
         </List>
       </SimpleBar>

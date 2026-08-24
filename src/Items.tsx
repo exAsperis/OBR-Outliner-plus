@@ -13,14 +13,16 @@ import { UNASSIGNED_ID, orderedGroupIds, resolveGroupId, type VirtualLayerDefini
 import { addVirtualLayer, assignItems, moveStackingGroup, removeVirtualLayer, stackVirtualLayer, updateVirtualLayerName } from "./virtualLayerService";
 import { getVerticalDropPosition, getVerticalDropPositionAtPoint, type DropPosition } from "./dragPosition";
 import { getOutlinerLayers } from "./layers";
+import { useLayerDisplaySettings } from "./layerSettings";
 
 export function Items({ search }: { search: string }) {
   const items = useOwlbearStore((state) => state.items);
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const role = useOwlbearStore((state) => state.role);
+  const layerSettings = useLayerDisplaySettings();
   const selection = useOwlbearStore((state) => state.selection);
   const searching = Boolean(search);
-  const availableLayers = useMemo(() => new Set(getOutlinerLayers(role)), [role]);
+  const availableLayers = useMemo(() => new Set(getOutlinerLayers(role, layerSettings.enabledLayers)), [layerSettings.enabledLayers, role]);
   const fuse = useMemo(() => new Fuse(items.map((item) => ({ id: item.id, name: item.name, layer: item.layer, type: item.type, text: isTextable(item) ? `${item.text.plainText} ${toPlainText(item.text.richText)}` : "", shape: isShape(item) ? item.shapeType : "" })), { keys: ["id", "name", "layer", "type", "text", "shape"], threshold: 0.25 }), [items]);
   const filtered = useMemo(() => search ? items.filter((item) => new Set(fuse.search(search).map((result) => result.item.id)).has(item.id)) : items, [fuse, items, search]);
   const shown = useMemo(() => filtered.filter((item) => availableLayers.has(item.layer) && !(!item.visible && role === "PLAYER")).sort((a, b) => b.zIndex - a.zIndex || a.id.localeCompare(b.id)), [availableLayers, filtered, role]);
@@ -169,10 +171,11 @@ export function Items({ search }: { search: string }) {
   }
 
   const shownLayers = useMemo(() => {
-    const base = getOutlinerLayers(role);
+    const base = getOutlinerLayers(role, layerSettings.enabledLayers);
     return searching ? base.filter((layer) => shown.some((item) => item.layer === layer)) : base;
-  }, [role, searching, shown]);
-  const sortableIds = [...shownIds, ...virtualLayers.layers.map((entry) => `VL:${entry.id}`), ...shownLayers.map((layer) => `UG:${layer}`)];
+  }, [layerSettings.enabledLayers, role, searching, shown]);
+  const visibleLayerSet = new Set(shownLayers);
+  const sortableIds = [...shownIds, ...virtualLayers.layers.filter((entry) => visibleLayerSet.has(entry.obrLayer)).map((entry) => `VL:${entry.id}`), ...shownLayers.map((layer) => `UG:${layer}`)];
   return <DndContext onDragStart={dragStart} onDragMove={dragMove} onDragEnd={dragEnd} onDragCancel={clearDrag} collisionDetection={collisionDetection} sensors={sensors}>
     <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
       {shownLayers.map((layer) => <ItemList key={layer} layer={layer} role={role} searching={searching} items={shown.filter((item) => item.layer === layer)} nativeItems={items.filter((item) => item.layer === layer)} definitions={virtualLayers.layers.filter((entry) => entry.obrLayer === layer)} groupOrder={orderedGroupIds(virtualLayers, layer)} groupDropPosition={groupDropPosition} resolveGroup={(item) => resolveGroupId(item, virtualLayers)} onCreate={() => promptCreate(layer)} onRename={promptRename} onDelete={confirmDelete} onItemSelect={select} onItemFocus={(item) => void recenter([...new Set([...(selection ?? []), item.id])])} onItemLocate={(item) => void locate(item)} onItemStack={(ids, operation: StackOperation) => void stackItems(items, ids, operation)} onGroupStack={(nativeLayer, id, operation) => void stackVirtualLayer(nativeLayer, id, operation)} />)}

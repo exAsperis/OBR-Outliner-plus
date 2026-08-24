@@ -18,6 +18,7 @@ import { navigateSendMenu, SEND_ACTIONS, type SendMenuView } from "./sendMenu";
 import { stackItems } from "./stackItems";
 import { assignItems, readVirtualLayerState } from "./virtualLayerService";
 import { EMPTY_VIRTUAL_LAYER_STATE, orderedGroupIds, UNASSIGNED_ID, type VirtualLayerState } from "./virtualLayers";
+import { useLayerDisplaySettings } from "./layerSettings";
 
 const STACK_ICONS = {
   front: SendToFrontIcon,
@@ -38,7 +39,8 @@ export function SendMenuApp() {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const layers = useMemo(() => getOutlinerLayers(role), [role]);
+  const layerSettings = useLayerDisplaySettings();
+  const layers = useMemo(() => getOutlinerLayers(role, layerSettings.enabledLayers), [layerSettings.enabledLayers, role]);
 
   useEffect(() => {
     let active = true;

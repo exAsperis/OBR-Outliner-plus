@@ -90,6 +90,8 @@ Other source changes are hot-reloaded by Vite during development.
   through virtual layers to individual item overrides.
 - Drag items between virtual layers or use the canvas Send to Layer menu for
   virtual-layer-aware multi-selection moves.
+- Choose which native Owlbear layers appear in Outliner+ and its Send menus
+  with persistent, per-device display settings.
 
 ## Azure Static Web Apps
 

@@ -8,6 +8,8 @@ Outliner+ builds on the original [Outliner extension](https://extensions.owlbear
 
 The Outliner+ panel mirrors the layers and items in the current Scene. Select an item in the panel to select it on the map, double-click an item to center the viewport on it, or use Search to filter the list by name and other item details.
 
+Game Masters can select **Settings** beside Search to open the *Use layers* panel above the Outliner. Its switches choose which native Owlbear layers appear in the list and in Send to Layer menus. These per-device display preferences do not move, modify, or delete items or virtual layers, and do not change state inheritance. Select Settings again to close the panel.
+
 ## Virtual layers
 
 Virtual layers are containers inside an Owlbear Rodeo layer. They keep groups of items in a consistent stacking order without changing the Owlbear layer those items belong to.

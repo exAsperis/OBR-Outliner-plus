@@ -19,7 +19,7 @@ ignored by Git so it cannot replace the production manifest accidentally:
 ```json
 {
   "name": "Outliner+ (Local)",
-  "version": "0.4.3-local",
+  "version": "0.4.4-local",
   "manifest_version": 1,
   "author": "es Asperis",
   "icon": "/logo.png",
@@ -28,7 +28,7 @@ ignored by Git so it cannot replace the production manifest accidentally:
   "action": {
     "title": "Outliner+ (Local)",
     "icon": "/icon.svg",
-    "popover": "/extension.html?v=0.4.3-local",
+    "popover": "/extension.html?v=0.4.4-local",
     "height": 129,
     "width": 375
   }
@@ -70,29 +70,24 @@ If Owlbear reports `Failed to fetch`:
 
 Other source changes are hot-reloaded by Vite during development.
 
-## Features
+## What Outliner+ is for
 
-- Browse, search, select, lock, and hide scene items by layer.
-- Locate an item without changing the current viewport zoom.
-- Send items to the front or back from the Outliner list.
-- Move selected canvas items forward, backward, to the front, or to the back
-  within their current layers using Owlbear Rodeo's context menu.
-- Send selected canvas items to any Owlbear Rodeo layer from a top-to-bottom
-  layer menu.
-- Create scene-specific virtual layers inside native Owlbear layers, with strict
-  stacking boundaries and independent item ordering.
-- Give virtual layers the same name to link directly controlled transparent,
-  click-through, locked, and visibility values across the scene; an inheritance
-  instruction excludes only the property it Enforces.
-- Rename, reorder, hide, lock, make click-through, and delete virtual layers
-  without changing or deleting their objects.
-- Enforce any subset of transparent, click-through, locked, and visibility states
-  from native layers, pass those instructions through virtual layers, or replace
-  them with Independent virtual-layer instructions and item exceptions.
-- Drag items between virtual layers or use the canvas Send to Layer menu for
-  virtual-layer-aware multi-selection moves.
-- Choose which native Owlbear layers appear in Outliner+ and its Send menus
-  with persistent, per-device display settings.
+- Turn a crowded Scene into a readable outline of locations, scenery, clues,
+  creatures, and effects without changing their native Owlbear layers.
+- Build dependable stacking groups such as Ground, Buildings, Furniture, Roof,
+  and Clues, then keep unfinished organization visible in Unassigned.
+- Prepare alternate versions of a location—intact and ruined, day and night, or
+  mundane and magical—and reveal one state with a single control during play.
+- Link one concept across Maps, Props, Drawings, and other native layers so its
+  directly controlled state changes as a unit.
+- Establish durable policies such as locked, click-through map art while keeping
+  individual groups or items available as deliberate exceptions.
+- Find and focus a named item quickly, reveal spoilers at the right moment, and
+  move or restack selected scenery without searching across the canvas.
+- Tailor the panel for prep or play with per-device feature and layer settings;
+  a live Total count still calls out objects in layers hidden from the outline.
+
+See the [user guide](https://outliner-plus.ex-asperis.com/#overview) for a scene-building workflow, a numbered-state example, and a concise control reference.
 
 ## Azure Static Web Apps
 

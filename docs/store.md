@@ -1,31 +1,27 @@
 ---
-title: Outliner
-description: Manage layers, search for items and view an outline of your scenes
-author: Owlbear Rodeo
-image: https://raw.githubusercontent.com/owlbear-rodeo/outliner/main/docs/header.jpg
-icon: https://outliner.owlbear.rodeo/logo.png
+title: Outliner+
+description: Prepare layered scenes, dramatic location changes, and faster live play
+author: es Asperis
+image: https://outliner-plus.ex-asperis.com/outliner-plus-hero.png
+icon: https://outliner-plus.ex-asperis.com/logo.png
 tags:
-  - built-by-owlbear
   - other
-manifest: https://outliner.owlbear.rodeo/manifest.json
-learn-more: https://extensions.owlbear.rodeo/outliner
+manifest: https://outliner-plus.ex-asperis.com/manifest.json
+learn-more: https://outliner-plus.ex-asperis.com
 ---
 
-# Outliner
+# Outliner+
 
-Manage layers, search for items and view an outline of your scenes.
+Spend less game time hunting through a crowded Scene. Outliner+ gives you a readable outline for preparing layered locations and operating them while you narrate.
 
-![outliner action](https://raw.githubusercontent.com/owlbear-rodeo/outliner/main/docs/action.jpg)
+- Arrange maps and scenery into meaningful groups such as Ground, Buildings, Roof, Furniture, and Clues.
+- Prepare alternate versions of a location and switch from intact to ruined, day to night, or mundane to magical with one control.
+- Link artwork across native Owlbear layers so every part of a roof, ship, room, or effect responds together.
+- Lock finished scenery, make covering art click-through, reveal hidden elements on cue, and locate named items without breaking the flow of play.
+- Keep the panel focused with per-device Settings while a live total warns you about objects in layers hidden from the outline.
 
-The Outliner will show a list of all the layers available.
-You can expand a layer by clicking it. Once expanded the Outliner will show every item in that layer.
-You can change the order of an item by dragging and dropping it above or below another item.
-You can also move an item to another layer by dragging it to that layer when it is expanded.
+Numbered alternatives such as `0: Manor State` and `1: Manor State` are mutually exclusive: restoring one automatically makes the others transparent. Exact-name groups can be linked across Maps, Props, Drawings, and other layers to make a complete scene state change together.
 
-Double clicking an item in the Outliner will focus your viewport on that item.
+See the [user guide](https://outliner-plus.ex-asperis.com/#overview) for a practical scene-building workflow and a concise control reference.
 
-Clicking the search icon at the top of the Outliner will allow you to filter the list of items by the given search term.
-
-**Support**
-
-If you need support for this extension you can email <support@owlbear.rodeo>
+Outliner+ is an enhanced fork of Owlbear Rodeo's original Outliner extension.

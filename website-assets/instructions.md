@@ -1,102 +1,121 @@
 # Outliner+ for Owlbear Rodeo
 
-Browse, search, and organize Scene items by layer. Create virtual layers to keep foreground and background elements in a predictable stacking order, and use quick controls for inherited click-through behavior, visibility, locking, and item order.
+Outliner+ helps you turn a crowded Owlbear Scene into something you can understand at a glance and operate confidently while your players are waiting. Use virtual layers to arrange related scenery, prepare alternate versions of a location, and keep the controls you need during play close at hand.
 
 ## Overview
 
-Outliner+ builds on the original [Outliner extension](https://extensions.owlbear.rodeo/outliner) with virtual layers, quick controls, and a Locate action.
+The outline mirrors the current Scene. Select an item to select it on the map, double-click it to center the viewport, or use Search when you remember a name but not where an object lives. **Total** shows the size of the whole Scene and calls out items in layers you have chosen not to show, such as `Total [157 (+3 in hidden layers)]`. Search never changes this total.
 
-The Outliner+ panel mirrors the layers and items in the current Scene. Select an item in the panel to select it on the map, double-click an item to center the viewport on it, or use Search to filter the list by name and other item details. Truncated native-layer, virtual-layer, and item names display their full text when hovered.
+### Prepare the panel for your game
 
-Game Masters can select **Settings** beside Search to open the *Use layers* panel above the Outliner. Its switches choose which of Owlbear Rodeo's native layers appear in the list and in Send to Layer menus. The eleven layers previously supported by Outliner+ start enabled; Grid, Post Process, Control, and Popover start disabled. These per-device display preferences do not move, modify, or delete items or virtual layers, and do not change state inheritance. Select Settings again to close the panel.
+Open **Settings** beside Search before you begin arranging a Scene.
 
-## Virtual layers
+- Under **Features**, keep only the controls you expect to use. Manage inheritance, Locked/Unlocked, and Visible/Hidden start on. Transparency and Interaction start off; enable them when you are building scene variants, click-through overlays, roofs, or other layered scenery.
+- Under **Show layers**, hide native Owlbear layers that are irrelevant to this Scene. Every row includes its glyph and current item count, so a nonzero count can reveal scenery filed somewhere unexpected. These choices also simplify Send to Layer menus.
 
-Virtual layers are containers inside an Owlbear Rodeo layer. They keep groups of items in a consistent stacking order without changing the Owlbear layer those items belong to.
+Settings are per device. They change your working view, not the Scene itself, and never remove existing state or inheritance. This makes it safe to simplify the panel differently for prep and play.
 
-For example:
+## Build a scene in layers
 
-- In the Maps layer, create Ground and Buildings virtual layers so building images remain above ground images.
-- In the Props layer, create Interior and Roof virtual layers so roof props remain above interior props.
+Start with groups that describe how you think about the location. In a manor map, useful virtual layers might be:
 
-Drag a virtual-layer heading to change its position, or use its Send menu. Drag items into a virtual layer to assign them to it. Once a native Owlbear layer contains a virtual layer, Outliner+ also displays an italicized Unassigned group for items that have not been assigned to one. Unlinked virtual layers and Unassigned use a rounded outline glyph; linked virtual layers use a chain glyph. Edit, Delete, and Send controls on these headings appear on hover or keyboard focus, while state controls remain visible.
+- Maps: **Ground**, **Upper Floor**, and **Roof**
+- Props: **Furniture**, **Doors**, **Clues**, and **Rubble**
+- Characters: **Guests**, **Servants**, and **Enemies**
 
-### Limitation
+Select the add button on a native-layer heading to create a virtual layer. Drag items into it, then drag the virtual-layer headings into the stacking order you want. Items stay in their native Owlbear layer, so a Props virtual layer cannot move above Characters, but virtual layers give you dependable ordering inside each native layer.
 
-Virtual layers do not override Owlbear Rodeo's layer order. For example, an item in the Props layer cannot be placed above an item in the Characters layer by using a virtual layer.
+Once a native layer has virtual layers, **Unassigned** collects anything not yet organized. Treat that group as a prep checklist: when it contains an unexpected item, either file the item or deliberately leave it there. Virtual layers and Unassigned start collapsed, keeping a large Scene readable; select a heading when you need its contents.
 
-Virtual layers with the same name are linked across the Scene, even when they belong to different Owlbear layers. A chain glyph appears beside each linked name. A directly controlled Transparent, Click-through, Locked, or Visible value propagates to every linked layer where that specific property is not currently supplied by an inheritance instruction. The linked layer's overall Pass-thru or Independent mode does not otherwise matter, and Enforce instructions for other properties do not interfere. The value is applied directly to all child items in each participating layer. Enforce switches and instruction values remain local and never propagate through links. Creating, renaming, or linking a layer never copies its inheritance configuration. Rename a linked layer to a different name to unlink it while preserving its current state.
+### Link one idea across several native layers
+
+Give virtual layers exactly the same name when they represent one concept in different native Owlbear layers. For example, create **Roof** in Maps and **Roof** in Props. The chain glyph shows that they are linked. A direct transparency, interaction, lock, or visibility change made on one eligible Roof group is applied to the other, allowing one decision to affect all of the artwork that makes up the roof.
+
+Use linking for concepts that should behave together: a ship and its deck props, a secret chamber and its clues, or a weather effect assembled from Maps, Props, and Drawings. Rename one group when it needs to become independent again. Explicit inheritance instructions take priority over linked direct controls.
+
+## Create dramatic scene states
+
+Numbered virtual layers are useful when a location changes but stays on the same battle map: doors open, a bridge collapses, a building burns, or a magical realm replaces the ordinary one.
+
+Name each alternative with a different number followed by a colon and the same descriptive name:
+
+- `0: Manor State`
+- `1: Manor State`
+- `2: Manor State`
+- `-1: Manor State`
+
+The number may be positive, negative, or decimal. The text after the colon is matched without regard to capitalization. These groups form a mutually exclusive transparency family, marked by a green Transparency control.
+
+During prep, make every alternative except the opening state transparent. During play, restore the alternative you want to reveal. Outliner+ automatically makes the differently numbered alternatives transparent, so only the chosen version—or its set of exact-name linked layers—remains on the map. If one state uses artwork in several native layers, repeat the exact full name, such as `1: Manor State`, in each layer to link that state together.
+
+This technique lets you stage a transformation as a single calm action instead of hiding and revealing dozens of objects while narrating. Transparency does not alter Visibility or Interaction, and restoring an item returns its saved scale and image-label opacity. Explicit inheritance instructions still take priority, so avoid enforcing a conflicting transparency value on a family you intend to switch live.
+
+## Use inheritance to remove repetitive work
+
+Inheritance is most useful for rules that should remain true as you continue editing. Enable **Manage inheritance** in Settings, then open the inheritance control on a native layer.
+
+For example, you might enforce **Locked** and **Click-through** on Maps so every map image remains locked and click-through, including images added later. Leave Visibility and Transparency unenforced so those states remain available for scene changes.
+
+Virtual layers normally **Pass thru** their parent instructions. Choose **Independent** for a genuine exception—for example, an interactive map element that must receive clicks—and enforce only the replacement values that group should supply. An individual item can also be made Independent for a one-off exception.
+
+Gold indicates an instruction is active, blue indicates mixed direct values, and red identifies an Independent break in the chain. If the rules become harder to understand than the Scene, simplify them: use inheritance for stable policies and direct controls for moment-to-moment staging. Close the inheritance window with its **X**, by clicking outside it, or with Escape.
+
+## Run the game from the outline
+
+The outline is most valuable when it keeps your attention on the table rather than on scene management.
+
+- **Search** for a named clue, creature, room, or effect instead of unfolding every layer.
+- **Locate** centers the viewport on an item without changing your zoom and briefly highlights its bounds.
+- **Show/Hide** is ideal for spoilers, creatures waiting offstage, and clues that should appear at the right moment.
+- **Lock** finished scenery so an accidental drag cannot disrupt the map.
+- **Interaction** makes roofs, overlays, and other covering artwork click-through while leaving them manageable from Outliner+.
+- **Transparency families** switch prepared location states while you continue narrating.
+- **Send** moves selected objects between native or virtual layers and adjusts their stacking position without hunting through the canvas.
+
+Item actions appear when an item is selected or hovered. Actions that modify an item are offered only when the current player has permission to make that change.
 
 ## Quick actions
 
-Game Masters can use the controls in the Outliner+ panel to manage Scene items. Item controls appear when an item is selected or hovered. Actions that update an item are available only when the current player has permission to update it.
-
 ### Create virtual layer
 
-Creates a virtual layer inside the selected Owlbear layer. Creating the first virtual layer also displays the Unassigned group, which can be reordered like a virtual layer.
+Creates a named group inside a native Owlbear layer. Creating the first one also reveals Unassigned. Virtual layers cannot be nested.
 
-### State inheritance
+### State inheritance and overrides
 
-The inheritance control appears immediately to the left of Transparent on Owlbear layers, virtual layers, Unassigned groups, and individual items. It manages four properties independently: Transparent, Click-through, Locked, and Visible.
+Opens the inheritance window. On native layers, an enabled **Enforce** switch keeps that state applied to the items in the layer, including items added later. Virtual layers and Unassigned can Pass thru those rules or become Independent. On an item, the control chooses whether it follows its parent rules. Item-state features hidden in Settings are also omitted here; hiding a control does not delete an existing rule.
 
-On an Owlbear-layer heading, the control opens an **Enforce** menu with a switch for each property. Enabling a switch captures the value currently shown by that heading and continuously supplies it to eligible descendants, including items added or moved there later. Only enabled properties are instructions; the remaining state controls continue to work normally.
+### Make transparent / Restore
 
-Virtual layers and Unassigned groups use one of two modes. **Pass thru** accepts the parent Owlbear layer's instructions and forwards them unchanged. **Independent** blocks every parent instruction and reveals its own four Enforce switches. A newly Independent group starts with no properties enforced. Its unenforced properties remain direct bulk controls.
-
-On an item, the inheritance button directly switches between allowing applicable parent instructions and **Independent**. An Independent item blocks every parent instruction, including properties for which its parent has no replacement. Allowing inheritance again immediately accepts the effective parent subset.
-
-An instructed state control edits the value supplied by the layer that enforces it. A property received by a Pass-thru layer or an inheriting item is disabled there. Uninstructed properties remain directly editable. Turning off an ordinary instruction leaves items at their last applied value; turning off Transparent restores each item's saved pre-transparency scale and image-label opacity. Transparency does not change Visibility or Click-through, so those properties remain independently controllable and composable with their own instructions.
-
-The inheritance glyph is gold when instructions are enforced or actively passed through, gray and slashed when none apply, and red with a broken virtual-layer or item step for Independent mode. Mixed direct values use the existing blue state glyphs. Empty groups can still configure Enforce instructions even though uninstructed bulk controls are unavailable.
+Makes eligible contents fully transparent or restores their saved scale and image-label opacity. A radiating glyph represents the transparent state; a filled circle represents the ordinary opaque state. A green control identifies a numbered mutually exclusive family.
 
 ### Disable / Enable clicks
 
-Disabling clicks makes an item click-through on the map, allowing you to select and interact with items behind it. The item remains available in Outliner+, where you can enable clicks again.
-
-On an Owlbear-layer heading, the control affects every item in that Owlbear layer, including items assigned to virtual layers. On a virtual-layer heading, it affects every item assigned to that virtual layer. On an item row, it affects that item. The control appears immediately to the left of Lock at every level.
-
-A heading's glyph summarizes its eligible contents: disabled clicks means every item is click-through, enabled clicks means every item can be clicked, and a blue glyph indicates a mixture of the two states. The control is disabled when the layer is empty unless a local inheritance rule is being edited.
+Makes eligible items click-through or interactive. Click-through items remain available in Outliner+, which is often the easiest place to select them again.
 
 ### Lock / Unlock
 
-On an Owlbear-layer heading, locks or unlocks every item in that Owlbear layer, including items assigned to virtual layers. On a virtual-layer heading, it affects every item assigned to that virtual layer. On an item row, it affects that item.
-
-A heading's glyph summarizes its eligible contents: locked means every item is locked, unlocked means every item is unlocked, and a blue glyph indicates a mixture of locked and unlocked items. The control is disabled when the layer is empty unless a local inheritance rule is being edited.
+Locks or unlocks eligible contents. A blue heading glyph means the group contains a mixture of states.
 
 ### Show / Hide
 
-On an Owlbear-layer heading, shows or hides every item in that Owlbear layer, including items assigned to virtual layers. On a virtual-layer heading, it affects every item assigned to that virtual layer. On an item row, it affects that item. Fog uses Cut and Uncut glyphs for the equivalent visibility actions.
-
-A heading's glyph summarizes its eligible contents: visible means every item is visible, hidden means every item is hidden, and a blue glyph indicates a mixture of visible and hidden items. The control is disabled when the layer is empty unless a local inheritance rule is being edited.
+Shows or hides eligible contents. Fog uses Cut and Uncut equivalents. A blue heading glyph means the group contains a mixture of states.
 
 ### Send
 
-Send is available on individual items, virtual-layer headings, and the Unassigned heading.
-
-#### to Front / Forward / Backward / to Back
-
-For items, these commands move the current selection within each selected item's virtual layer, or within its Owlbear layer when that layer has no virtual layers. Virtual-layer boundaries are preserved.
-
-For virtual layers and Unassigned, these commands move the entire group relative to the other groups in the same Owlbear layer.
-
-#### to Layer
-
-For items, moves the current selection to another Owlbear or virtual layer.
-
-For a virtual layer or Unassigned, moves every contained item to the chosen destination. This action requires confirmation because virtual layers cannot be nested and the container itself is not moved.
+**to Front**, **Forward**, **Backward**, and **to Back** adjust stacking while preserving virtual-layer boundaries. **to Layer** moves selected items to another native or virtual layer. Using to Layer on a virtual layer or Unassigned moves its contents after confirmation; it does not nest the group.
 
 ### Delete
 
-Deletes the selected virtual layer without deleting its items. Its items become Unassigned, or return directly to their Owlbear layer when no virtual layers remain there.
+Deletes a virtual layer, not its items. Its contents become Unassigned, or return directly to their native layer when no virtual layers remain there.
 
 ### Edit
 
-Renames the selected virtual layer.
+Renames a virtual layer. Matching names link; changing a linked name separates that group without changing its current item states.
 
 ### Locate
 
-Centers the viewport on the selected item and briefly highlights the item's bounds on the map.
+Centers the viewport on an item and briefly highlights its bounds.
 
 ## Owlbear context menu
 
-Outliner+ adds a Send entry to Owlbear Rodeo's item context menu. It provides the same stacking and layer destinations as the Send control in the Outliner+ panel and operates on the current selection.
+Outliner+ adds **Send** to Owlbear Rodeo's item context menu. It uses the current canvas selection and offers the same stacking commands and native or virtual destinations as the outline, which is useful when the objects you want are already selected on the map.

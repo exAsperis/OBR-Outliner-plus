@@ -120,7 +120,9 @@ export function Website() {
         <aside>
           <p>On this page</p>
           <a href="#overview">Overview</a>
-          <a href="#virtual-layers">Virtual layers</a>
+          <a href="#build-a-scene-in-layers">Build a scene</a>
+          <a href="#create-dramatic-scene-states">Scene states</a>
+          <a href="#run-the-game-from-the-outline">Run the game</a>
           <a href="#quick-actions">Quick actions</a>
           <a href="#owlbear-context-menu">Context menu</a>
           <div className="install-note"><strong>Install in Owlbear Rodeo</strong><code>{INSTALL_URL}</code><button type="button" onClick={() => void copyInstallLink()}>{copied ? "Copied" : "Copy link"}</button></div>

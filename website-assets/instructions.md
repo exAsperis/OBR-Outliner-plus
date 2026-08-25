@@ -4,14 +4,19 @@ Outliner+ helps you turn a crowded Owlbear Scene into something you can understa
 
 ## Overview
 
-The outline mirrors the current Scene. Select an item to select it on the map, double-click it to center the viewport, or use Search when you remember a name but not where an object lives. **Total** shows the size of the whole Scene and calls out items in layers you have chosen not to show, such as `Total [157 (+3 in hidden layers)]`. Search never changes this total.
+The outline mirrors the current Scene. Select an item to select it on the map, double-click it to center the viewport, or use Search when you remember a name but not where an object lives.
 
 ### Prepare the panel for your game
 
 Open **Settings** beside Search before you begin arranging a Scene.
 
-- Under **Features**, keep only the controls you expect to use. Manage inheritance, Locked/Unlocked, and Visible/Hidden start on. Transparency and Interaction start off; enable them when you are building scene variants, click-through overlays, roofs, or other layered scenery.
-- Under **Show layers**, hide native Owlbear layers that are irrelevant to this Scene. Every row includes its glyph and current item count, so a nonzero count can reveal scenery filed somewhere unexpected. These choices also simplify Send to Layer menus.
+- Under **Features**, keep only the controls you expect to use.
+  - Inheritance: allows you to enforce property states for all items in a virtual or native layer.
+  - Transparency: Make an item invisible, even to the GM.
+  - Interaction: Turn off the ability to click on an item.
+  - Locked/Unlocked: Keep an item from being accidentally moved or resized.
+  - Visible/Hidden: Hide or reveal an item to the players (or cut/uncut fog).
+- Under **Show layers**, hide native Owlbear layers that are irrelevant to you. Every row includes its current item count, so a nonzero count can reveal scenery filed somewhere unexpected. These choices also simplify Send to Layer menus.
 
 Settings are per device. They change your working view, not the Scene itself, and never remove existing state or inheritance. This makes it safe to simplify the panel differently for prep and play.
 
@@ -31,24 +36,24 @@ Once a native layer has virtual layers, **Unassigned** collects anything not yet
 
 Give virtual layers exactly the same name when they represent one concept in different native Owlbear layers. For example, create **Roof** in Maps and **Roof** in Props. The chain glyph shows that they are linked. A direct transparency, interaction, lock, or visibility change made on one eligible Roof group is applied to the other, allowing one decision to affect all of the artwork that makes up the roof.
 
-Use linking for concepts that should behave together: a ship and its deck props, a secret chamber and its clues, or a weather effect assembled from Maps, Props, and Drawings. Rename one group when it needs to become independent again. Explicit inheritance instructions take priority over linked direct controls.
+Use linking for concepts that should behave together: a ship and its deck props, a secret chamber and its clues, or a weather effect assembled from Maps, Props, and Drawings. Rename one group when it needs to become independent again.
 
-## Create dramatic scene states
+## Create dramatic scene states or even virtual vertical levels
 
-Numbered virtual layers are useful when a location changes but stays on the same battle map: doors open, a bridge collapses, a building burns, or a magical realm replaces the ordinary one.
+Numbered virtual layers are useful when a location changes but stays in the same location on the battle map: doors open, a bridge collapses, a building burns, the party descends into the next level of the dungion, or a magical realm replaces the ordinary one.
 
 Name each alternative with a different number followed by a colon and the same descriptive name:
 
-- `0: Manor State`
-- `1: Manor State`
-- `2: Manor State`
-- `-1: Manor State`
+- 2: Temple
+- 1: Temple
+- 0: Temple
+- -1: Temple
 
-The number may be positive, negative, or decimal. The text after the colon is matched without regard to capitalization. These groups form a mutually exclusive transparency family, marked by a green Transparency control.
+The number may be positive, or negative. The text after the colon is matched without regard to capitalization. These groups form a mutually exclusive transparency family, marked by a green Transparency control. By making objects invisible (scaleed to 0x0) rather than hidden unused objects from one state or level won't visually interfere with the GM's view of the current state/level.
 
 During prep, make every alternative except the opening state transparent. During play, restore the alternative you want to reveal. Outliner+ automatically makes the differently numbered alternatives transparent, so only the chosen version—or its set of exact-name linked layers—remains on the map. If one state uses artwork in several native layers, repeat the exact full name, such as `1: Manor State`, in each layer to link that state together.
 
-This technique lets you stage a transformation as a single calm action instead of hiding and revealing dozens of objects while narrating. Transparency does not alter Visibility or Interaction, and restoring an item returns its saved scale and image-label opacity. Explicit inheritance instructions still take priority, so avoid enforcing a conflicting transparency value on a family you intend to switch live.
+This technique lets you stage a transformation as a single calm action instead of hiding and revealing dozens of objects while narrating. Restoring an item returns its saved scale and image-label opacity. Explicit inheritance instructions still take priority, so avoid enforcing a conflicting transparency value on a family you intend to switch live.
 
 ## Use inheritance to remove repetitive work
 
@@ -58,7 +63,7 @@ For example, you might enforce **Locked** and **Click-through** on Maps so every
 
 Virtual layers normally **Pass thru** their parent instructions. Choose **Independent** for a genuine exception—for example, an interactive map element that must receive clicks—and enforce only the replacement values that group should supply. An individual item can also be made Independent for a one-off exception.
 
-Gold indicates an instruction is active, blue indicates mixed direct values, and red identifies an Independent break in the chain. If the rules become harder to understand than the Scene, simplify them: use inheritance for stable policies and direct controls for moment-to-moment staging. Close the inheritance window with its **X**, by clicking outside it, or with Escape.
+Gold indicates an instruction is active, blue indicates mixed direct values, and red identifies an Independent break in the chain. If the rules become harder to understand than the Scene, simplify them: use inheritance for stable policies and direct controls for moment-to-moment staging.
 
 ## Run the game from the outline
 
@@ -72,13 +77,12 @@ The outline is most valuable when it keeps your attention on the table rather th
 - **Transparency families** switch prepared location states while you continue narrating.
 - **Send** moves selected objects between native or virtual layers and adjusts their stacking position without hunting through the canvas.
 
-Item actions appear when an item is selected or hovered. Actions that modify an item are offered only when the current player has permission to make that change.
 
 ## Quick actions
 
 ### Create virtual layer
 
-Creates a named group inside a native Owlbear layer. Creating the first one also reveals Unassigned. Virtual layers cannot be nested.
+Creates a named group inside a native Owlbear layer. Creating the first virtual layer also reveals an *Unassigned* virtual layer. Virtual layers can be reordered but cannot be nested.
 
 ### State inheritance and overrides
 
@@ -86,7 +90,7 @@ Opens the inheritance window. On native layers, an enabled **Enforce** switch ke
 
 ### Make transparent / Restore
 
-Makes eligible contents fully transparent or restores their saved scale and image-label opacity. A radiating glyph represents the transparent state; a filled circle represents the ordinary opaque state. A green control identifies a numbered mutually exclusive family.
+Makes eligible contents fully transparent (even to the GM) by setting their scale to zero, or restores their saved scale and image-label opacity. A radiating glyph represents the transparent state; a filled circle represents the ordinary opaque state. A green control identifies a numbered mutually exclusive family.
 
 ### Disable / Enable clicks
 
@@ -94,15 +98,15 @@ Makes eligible items click-through or interactive. Click-through items remain av
 
 ### Lock / Unlock
 
-Locks or unlocks eligible contents. A blue heading glyph means the group contains a mixture of states.
+Locks or unlocks eligible contents.
 
 ### Show / Hide
 
-Shows or hides eligible contents. Fog uses Cut and Uncut equivalents. A blue heading glyph means the group contains a mixture of states.
+Shows or hides eligible contents. Fog uses Cut and Uncut equivalents.
 
 ### Send
 
-**to Front**, **Forward**, **Backward**, and **to Back** adjust stacking while preserving virtual-layer boundaries. **to Layer** moves selected items to another native or virtual layer. Using to Layer on a virtual layer or Unassigned moves its contents after confirmation; it does not nest the group.
+**to Front**, **Forward**, **Backward**, and **to Back** adjust stacking within virtual-layer boundaries. **to Layer** moves selected items to another native or virtual layer. Using *to Layer* on a virtual layer or Unassigned moves its contents after confirmation; it does not nest the group.
 
 ### Delete
 

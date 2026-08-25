@@ -45,9 +45,11 @@ body:has(.site-shell) { margin: 0; min-width: 320px; background: #181c2a; }
 .guide h4 { margin: 32px 0 10px; display: flex; align-items: center; gap: 11px; font-size: 1.02rem; }
 .guide p { margin: 0 0 20px; }
 .guide ul { margin: 4px 0 24px; padding-left: 22px; }
+.guide ul ul { margin: 6px 0 10px; }
 .guide li { padding-left: 5px; margin: 8px 0; }
 .guide a { color: #b6a3ff; text-underline-offset: 4px; }
 .guide em { color: #e2e4ec; }
+.guide code { padding: 2px 6px; border-radius: 6px; color: #e7e0ff; background: #292e42; font-size: .9em; }
 .heading-glyph { width: 30px; height: 30px; flex: 0 0 30px; display: inline-grid; place-items: center; color: #aa94ff; }
 .heading-glyph > svg, .heading-glyph > img { width: 23px; height: 23px; }
 .heading-glyph img { filter: invert(74%) sepia(35%) saturate(3880%) hue-rotate(209deg) brightness(102%); }

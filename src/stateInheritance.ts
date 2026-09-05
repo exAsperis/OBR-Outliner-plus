@@ -76,10 +76,29 @@ export function directNativeItemIds(items: Item[], state: VirtualLayerState, lay
 
 export function linkedDirectPropertyItemIds(items: Item[], state: VirtualLayerState, sourceId: string, property: StatefulProperty) {
   const source = state.layers.find((layer) => layer.id === sourceId);
-  if (!source || Object.prototype.hasOwnProperty.call(getGroupEffectiveInstructions(state, source.obrLayer, source.id), property)) return [];
+  if (!source) return [];
+  // A locally enforced property is editable and must still reach linked peers.
+  // An instruction inherited from the native layer cannot be edited here.
+  if (getGroupInheritance(state, source.obrLayer, source.id).mode === "pass-through" &&
+      Object.prototype.hasOwnProperty.call(getNativeRule(state, source.obrLayer), property)) return [];
   return linkedVirtualLayers(state, sourceId).filter((layer) =>
     !Object.prototype.hasOwnProperty.call(getGroupEffectiveInstructions(state, layer.obrLayer, layer.id), property))
     .flatMap((layer) => items.filter((item) => item.layer === layer.obrLayer && resolveGroupId(item, state) === layer.id).map((item) => item.id));
+}
+
+export function withLinkedGroupProperty(state: VirtualLayerState, sourceId: string, property: StatefulProperty, value: boolean): VirtualLayerState {
+  let next = state;
+  // Linked controls change the value of a peer's existing enforcement rule,
+  // just as clicking that peer directly would. Keep its mode and other rules.
+  for (const layer of linkedVirtualLayers(state, sourceId)) {
+    const config = getGroupInheritance(state, layer.obrLayer, layer.id);
+    if (config.mode !== "independent" || !Object.prototype.hasOwnProperty.call(config.enforce, property) || config.enforce[property] === value) continue;
+    next = { ...next, inheritance: { ...next.inheritance, virtual: {
+      ...next.inheritance?.virtual,
+      [layer.id]: { ...config, enforce: { ...config.enforce, [property]: value } },
+    } } };
+  }
+  return next;
 }
 
 export function hasInstructions(rule: EnforcedItemState | undefined) {

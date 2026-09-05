@@ -34,6 +34,7 @@ import {
   getItemRule,
   getNativeRule,
   linkedDirectPropertyItemIds,
+  withLinkedGroupProperty,
 } from "./stateInheritance";
 import { activateTransparency, getTransparentState, needsTransparencyEnforcement, restoreTransparency } from "./transparentState";
 
@@ -213,9 +214,11 @@ export function setScopeProperty(scope: RuleScope, property: StatefulProperty, v
         next = withGroupInheritance(next, scope, { ...config, enforce: { ...config.enforce, [property]: value } });
       } else if (Object.prototype.hasOwnProperty.call(getGroupEffectiveInstructions(state, scope.layer, scope.groupId), property)) {
         return;
-      } else if (scope.groupId !== "__unassigned__") {
+      }
+      if (scope.groupId !== "__unassigned__") {
+        next = withLinkedGroupProperty(next, scope.groupId, property, value);
         linkedDirectPropertyItemIds(items, state, scope.groupId, property).forEach((id) => directValues.set(id, value));
-      } else {
+      } else if (!Object.prototype.hasOwnProperty.call(getGroupEffectiveInstructions(state, scope.layer, scope.groupId), property)) {
         directGroupItemIds(items, state, scope.layer, scope.groupId).forEach((id) => directValues.set(id, value));
       }
       if (property === "transparent" && !value && scope.groupId !== "__unassigned__") {
@@ -224,9 +227,8 @@ export function setScopeProperty(scope: RuleScope, property: StatefulProperty, v
           const siblingConfig = getGroupInheritance(state, sibling.obrLayer, sibling.id);
           if (siblingConfig.mode === "independent" && Object.prototype.hasOwnProperty.call(siblingConfig.enforce, "transparent")) {
             next = withGroupInheritance(next, siblingScope, { ...siblingConfig, enforce: { ...siblingConfig.enforce, transparent: true } });
-          } else if (!Object.prototype.hasOwnProperty.call(getGroupEffectiveInstructions(state, sibling.obrLayer, sibling.id), "transparent")) {
-            linkedDirectPropertyItemIds(items, state, sibling.id, "transparent").forEach((id) => directValues.set(id, true));
           }
+          linkedDirectPropertyItemIds(items, state, sibling.id, "transparent").forEach((id) => directValues.set(id, true));
         }
       }
     }

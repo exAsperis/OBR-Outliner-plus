@@ -87,7 +87,7 @@ Other source changes are hot-reloaded by Vite during development.
 - Tailor the panel for prep or play with per-device feature and layer settings;
   a live Total count still calls out objects in layers hidden from the outline.
 
-See the [user guide](https://outliner-plus.ex-asperis.com/#overview) for a scene-building workflow, a numbered-state example, and a concise control reference.
+See the [user guide](https://outliner-plus.ex-asperis.com/#overview) for a scene-building workflow, a state-linked layer example, and a concise control reference.
 
 ## Azure Static Web Apps
 

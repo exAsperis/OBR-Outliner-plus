@@ -40,18 +40,20 @@ Use linking for concepts that should behave together: a ship and its deck props,
 
 ## Create dramatic scene states or even virtual vertical levels
 
-Numbered virtual layers are useful when a location changes but stays in the same location on the battle map: doors open, a bridge collapses, a building burns, the party descends into the next level of the dungion, or a magical realm replaces the ordinary one.
+State-linked virtual layers are useful when a location changes but stays in the same location on the battle map: doors open, a bridge collapses, a building burns, the party descends into the next level of the dungeon, or a magical realm replaces the ordinary one.
 
-Name each alternative with a different number followed by a colon and the same descriptive name:
+Name each alternative with the same virtual-layer group name, a colon, and a different state label:
 
-- 2: Temple
-- 1: Temple
-- 0: Temple
-- -1: Temple
+- Temple: Rooftop
+- Temple: Upper Floor
+- Temple: Ground Floor
+- Temple: Crypt
 
-The number may be positive, or negative. The text after the colon is matched without regard to capitalization. These groups form a mutually exclusive transparency family, marked by a green Transparency control. By making objects invisible (scaleed to 0x0) rather than hidden unused objects from one state or level won't visually interfere with the GM's view of the current state/level.
+The group name and state label may be any non-empty text. Spaces around the colon are trimmed, and names are matched without regard to capitalization. These groups form a mutually exclusive transparency family, marked by a green Transparency control. By making objects invisible (scaled to 0x0) rather than hidden, unused objects from one state or level won't visually interfere with the GM's view of the current state or level.
 
-During prep, make every alternative except the opening state transparent. During play, restore the alternative you want to reveal. Outliner+ automatically makes the differently numbered alternatives transparent, so only the chosen version—or its set of exact-name linked layers—remains on the map. If one state uses artwork in several native layers, repeat the exact full name, such as `1: Manor State`, in each layer to link that state together.
+During prep, make every alternative except the opening state transparent. During play, restore the alternative you want to reveal. Outliner+ automatically makes the other states in that virtual-layer group transparent, so only the chosen version—or its set of exact-name linked layers—remains on the map. If one state uses artwork in several native layers, repeat the exact full name, such as `Manor: Burning`, in each layer to link that state together.
+
+When state-linked virtual layers exist, the fixed scene-state switcher below the Outliner+ header lists each group and its available states. Select a state there to restore it and make the other states in its group transparent without finding those layers in the hierarchy. Drag the state buttons to arrange them in the order that best fits the scene, then use the arrow buttons at either end to step backward or forward through that order.
 
 This technique lets you stage a transformation as a single calm action instead of hiding and revealing dozens of objects while narrating. Restoring an item returns its saved scale and image-label opacity. Explicit inheritance instructions still take priority, so avoid enforcing a conflicting transparency value on a family you intend to switch live.
 
@@ -70,6 +72,7 @@ Gold indicates an instruction is active, blue indicates mixed direct values, and
 The outline is most valuable when it keeps your attention on the table rather than on scene management.
 
 - **Search** for a named clue, creature, room, or effect instead of unfolding every layer.
+- Select **Total** to collapse or restore the entire hierarchy while leaving the scene-state switcher available.
 - **Locate** centers the viewport on an item without changing your zoom and briefly highlights its bounds.
 - **Show/Hide** is ideal for spoilers, creatures waiting offstage, and clues that should appear at the right moment.
 - **Lock** finished scenery so an accidental drag cannot disrupt the map.
@@ -90,7 +93,7 @@ Opens the inheritance window. On native layers, an enabled **Enforce** switch ke
 
 ### Make transparent / Restore
 
-Makes eligible contents fully transparent (even to the GM) by setting their scale to zero, or restores their saved scale and image-label opacity. A radiating glyph represents the transparent state; a filled circle represents the ordinary opaque state. A green control identifies a numbered mutually exclusive family.
+Makes eligible contents fully transparent (even to the GM) by setting their scale to zero, or restores their saved scale and image-label opacity. A radiating glyph represents the transparent state; a filled circle represents the ordinary opaque state. A green control identifies a mutually exclusive state family.
 
 ### Disable / Enable clicks
 

@@ -13,6 +13,9 @@ import {
   isLinkedVirtualLayer,
   linkedVirtualLayers,
   mutuallyExclusiveVirtualLayers,
+  parseStatefulVirtualLayerName,
+  statefulVirtualLayerGroups,
+  reorderStatefulVirtualLayerState,
   parseVirtualLayerState,
   orderedGroupIds,
   renameVirtualLayer,
@@ -59,18 +62,38 @@ test("allows duplicate trimmed case-insensitive names and derives links scene-wi
   assert.throws(() => createVirtualLayer(state, "PROP", " ", "empty"), /empty/);
 });
 
-test("groups numbered virtual-layer names into mutually exclusive families", () => {
-  const numbered: VirtualLayerState = { version: 2, layers: [
-    { id: "ground", name: "0: Castle", obrLayer: "MAP", order: 0 },
-    { id: "first", name: "1: Castle", obrLayer: "PROP", order: 0 },
-    { id: "first-linked", name: "1: Castle", obrLayer: "DRAWING", order: 0 },
-    { id: "basement", name: "-1: castle", obrLayer: "MAP", order: 1 },
-    { id: "other", name: "2: Village", obrLayer: "MAP", order: 2 },
+test("parses stateful virtual-layer names and groups their mutually exclusive states", () => {
+  assert.deepEqual(parseStatefulVirtualLayerName(" Castle : Ground "), { group: "Castle", state: "Ground" });
+  assert.deepEqual(parseStatefulVirtualLayerName("Castle:Night:Storm"), { group: "Castle", state: "Night:Storm" });
+  assert.equal(parseStatefulVirtualLayerName("Castle"), undefined);
+  assert.equal(parseStatefulVirtualLayerName(": Ground"), undefined);
+  assert.equal(parseStatefulVirtualLayerName("Castle: "), undefined);
+
+  const stateful: VirtualLayerState = { version: 2, layers: [
+    { id: "ground", name: "Castle: Ground", obrLayer: "MAP", order: 0 },
+    { id: "first", name: "Castle: First Floor", obrLayer: "PROP", order: 0 },
+    { id: "first-linked", name: "Castle: First Floor", obrLayer: "DRAWING", order: 0 },
+    { id: "basement", name: " castle : basement ", obrLayer: "MAP", order: 1 },
+    { id: "other", name: "Village: Ground", obrLayer: "MAP", order: 2 },
     { id: "plain", name: "Castle", obrLayer: "MAP", order: 3 },
   ] };
-  assert.deepEqual(mutuallyExclusiveVirtualLayers(numbered, "first").map((layer) => layer.id), ["ground", "basement"]);
-  assert.deepEqual(mutuallyExclusiveVirtualLayers(numbered, "first-linked").map((layer) => layer.id), ["ground", "basement"]);
-  assert.deepEqual(mutuallyExclusiveVirtualLayers(numbered, "plain"), []);
+  assert.deepEqual(mutuallyExclusiveVirtualLayers(stateful, "first").map((layer) => layer.id), ["ground", "basement"]);
+  assert.deepEqual(mutuallyExclusiveVirtualLayers(stateful, "first-linked").map((layer) => layer.id), ["ground", "basement"]);
+  assert.deepEqual(mutuallyExclusiveVirtualLayers(stateful, "plain"), []);
+  assert.deepEqual(statefulVirtualLayerGroups(stateful).map((group) => ({
+    name: group.name,
+    states: group.states.map((entry) => ({ name: entry.name, ids: entry.layers.map((layer) => layer.id) })),
+  })), [
+    { name: "Castle", states: [
+      { name: "Ground", ids: ["ground"] },
+      { name: "First Floor", ids: ["first", "first-linked"] },
+      { name: "basement", ids: ["basement"] },
+    ] },
+    { name: "Village", states: [{ name: "Ground", ids: ["other"] }] },
+  ]);
+  const reordered = reorderStatefulVirtualLayerState(stateful, " CASTLE ", "basement", "Ground");
+  assert.deepEqual(statefulVirtualLayerGroups(reordered)[0].states.map((entry) => entry.name), ["basement", "Ground", "First Floor"]);
+  assert.deepEqual(parseVirtualLayerState(reordered).stateOrders, { castle: ["basement", "ground", "first floor"] });
 });
 
 test("parses valid definitions and ignores malformed entries", () => {

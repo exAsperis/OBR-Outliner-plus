@@ -264,11 +264,11 @@ test("Tomb switches synchronize enforced Props and direct Maps with an unmatched
     let tomb: VirtualLayerState = {
       version: 2,
       layers: [
-        { id: "p2", name: "-2: Tomb", obrLayer: "PROP", order: 0 },
-        { id: "p4", name: "-4: Tomb", obrLayer: "PROP", order: 1 },
-        { id: "m2", name: "-2: Tomb", obrLayer: "MAP", order: 0 },
-        { id: "m4", name: "-4: Tomb", obrLayer: "MAP", order: 1 },
-        { id: "extra", name: "-3: Tomb", obrLayer: extraLayer, order: 2 },
+        { id: "p2", name: "Tomb: -2", obrLayer: "PROP", order: 0 },
+        { id: "p4", name: "Tomb: -4", obrLayer: "PROP", order: 1 },
+        { id: "m2", name: "Tomb: -2", obrLayer: "MAP", order: 0 },
+        { id: "m4", name: "Tomb: -4", obrLayer: "MAP", order: 1 },
+        { id: "extra", name: "Tomb: -3", obrLayer: extraLayer, order: 2 },
       ],
       inheritance: { virtual: {
         p2: { mode: "independent", enforce: { transparent: true, locked: true } },

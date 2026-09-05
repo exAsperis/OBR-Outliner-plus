@@ -18,6 +18,7 @@ import {
   renameVirtualLayer,
   reorderVirtualLayer,
   reorderStackingGroup,
+  reorderStatefulVirtualLayerState,
   stackGroup,
   stateFromMetadata,
   type EnforcedItemState,
@@ -405,6 +406,14 @@ export function setItemTransparency(item: Item, value: boolean) {
       else restore = restoreTransparency(items[0]);
     }, true);
     if (restore.restored) await finishRestoredItems(new Map([[item.id, restore.reactivate]]));
+  });
+}
+
+export function moveStatefulVirtualLayerState(groupName: string, activeState: string, overState: string) {
+  return serialized(async () => {
+    const state = await getState();
+    const next = reorderStatefulVirtualLayerState(state, groupName, activeState, overState);
+    if (next !== state) await setState(next);
   });
 }
 

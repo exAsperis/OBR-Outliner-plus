@@ -31,6 +31,7 @@ export interface VirtualLayerState {
   version: 2;
   layers: VirtualLayerDefinition[];
   unassignedOrders?: Partial<Record<Item["layer"], number>>;
+  stateOrders?: Record<string, string[]>;
   inheritance?: StateInheritanceRules;
 }
 
@@ -113,7 +114,16 @@ export function parseVirtualLayerState(value: unknown): VirtualLayerState {
     if (isLayer(layer) && typeof order === "number" && Number.isFinite(order)) unassignedOrders[layer] = order;
   }
   const inheritance = parseInheritanceRules((value as { inheritance?: unknown }).inheritance, layers, version === 1);
-  return { version: 2, layers, ...(Object.keys(unassignedOrders).length ? { unassignedOrders } : {}), ...(inheritance ? { inheritance } : {}) };
+  const rawStateOrders = (value as { stateOrders?: unknown }).stateOrders;
+  const stateOrders: Record<string, string[]> = {};
+  if (rawStateOrders && typeof rawStateOrders === "object") for (const [group, order] of Object.entries(rawStateOrders)) {
+    if (group && Array.isArray(order)) {
+      const states = [...new Set(order.filter((entry): entry is string => typeof entry === "string" && Boolean(entry)))];
+      if (states.length) stateOrders[group] = states;
+    }
+  }
+  return { version: 2, layers, ...(Object.keys(unassignedOrders).length ? { unassignedOrders } : {}),
+    ...(Object.keys(stateOrders).length ? { stateOrders } : {}), ...(inheritance ? { inheritance } : {}) };
 }
 
 export function stateFromMetadata(metadata: Record<string, unknown>) {
@@ -133,19 +143,79 @@ export function isLinkedVirtualLayer(state: VirtualLayerState, id: string) {
   return linkedVirtualLayers(state, id).length > 1;
 }
 
-function numberedVirtualLayerName(name: string) {
-  const match = name.match(/^\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*:\s*(.+?)\s*$/);
-  if (!match) return undefined;
-  return { number: Number(match[1]), family: match[2].toLocaleLowerCase() };
+export interface StatefulVirtualLayerName {
+  group: string;
+  state: string;
+}
+
+export interface StatefulVirtualLayerGroup {
+  name: string;
+  states: Array<{ name: string; layers: VirtualLayerDefinition[] }>;
+}
+
+export function parseStatefulVirtualLayerName(name: string): StatefulVirtualLayerName | undefined {
+  const separator = name.indexOf(":");
+  if (separator < 0) return undefined;
+  const group = name.slice(0, separator).trim();
+  const state = name.slice(separator + 1).trim();
+  return group && state ? { group, state } : undefined;
+}
+
+export function statefulVirtualLayerGroups(state: VirtualLayerState): StatefulVirtualLayerGroup[] {
+  const groups = new Map<string, StatefulVirtualLayerGroup>();
+  const states = new Map<string, Map<string, StatefulVirtualLayerGroup["states"][number]>>();
+  for (const layer of state.layers) {
+    const parsed = parseStatefulVirtualLayerName(layer.name);
+    if (!parsed) continue;
+    const groupKey = parsed.group.toLocaleLowerCase();
+    const stateKey = parsed.state.toLocaleLowerCase();
+    let group = groups.get(groupKey);
+    if (!group) {
+      group = { name: parsed.group, states: [] };
+      groups.set(groupKey, group);
+      states.set(groupKey, new Map());
+    }
+    let groupState = states.get(groupKey)?.get(stateKey);
+    if (!groupState) {
+      groupState = { name: parsed.state, layers: [] };
+      states.get(groupKey)?.set(stateKey, groupState);
+      group.states.push(groupState);
+    }
+    groupState.layers.push(layer);
+  }
+  return [...groups.entries()].map(([groupKey, group]) => {
+    const order = state.stateOrders?.[groupKey] ?? [];
+    const positions = new Map(order.map((stateKey, index) => [stateKey, index]));
+    return { ...group, states: group.states.map((entry, index) => ({ entry, index }))
+      .sort((a, b) => (positions.get(a.entry.name.toLocaleLowerCase()) ?? order.length + a.index) -
+        (positions.get(b.entry.name.toLocaleLowerCase()) ?? order.length + b.index))
+      .map(({ entry }) => entry) };
+  });
+}
+
+export function reorderStatefulVirtualLayerState(state: VirtualLayerState, groupName: string, activeState: string, overState: string): VirtualLayerState {
+  const groupKey = groupName.trim().toLocaleLowerCase();
+  const group = statefulVirtualLayerGroups(state).find((entry) => entry.name.toLocaleLowerCase() === groupKey);
+  if (!group) return state;
+  const activeKey = activeState.trim().toLocaleLowerCase();
+  const overKey = overState.trim().toLocaleLowerCase();
+  const order = group.states.map((entry) => entry.name.toLocaleLowerCase());
+  const from = order.indexOf(activeKey);
+  const to = order.indexOf(overKey);
+  if (from < 0 || to < 0 || from === to) return state;
+  order.splice(to, 0, order.splice(from, 1)[0]);
+  return { ...state, stateOrders: { ...state.stateOrders, [groupKey]: order } };
 }
 
 export function mutuallyExclusiveVirtualLayers(state: VirtualLayerState, id: string) {
   const target = state.layers.find((layer) => layer.id === id);
-  const numbered = target && numberedVirtualLayerName(target.name);
-  if (!numbered) return [];
+  const parsedTarget = target && parseStatefulVirtualLayerName(target.name);
+  if (!parsedTarget) return [];
+  const normalizedGroup = parsedTarget.group.toLocaleLowerCase();
+  const normalizedState = parsedTarget.state.toLocaleLowerCase();
   return state.layers.filter((layer) => {
-    const candidate = numberedVirtualLayerName(layer.name);
-    return candidate && candidate.family === numbered.family && candidate.number !== numbered.number;
+    const candidate = parseStatefulVirtualLayerName(layer.name);
+    return candidate && candidate.group.toLocaleLowerCase() === normalizedGroup && candidate.state.toLocaleLowerCase() !== normalizedState;
   });
 }
 

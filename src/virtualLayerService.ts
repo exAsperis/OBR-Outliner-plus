@@ -29,6 +29,7 @@ import {
   calculateInheritanceUpdates,
   directGroupItemIds,
   directNativeItemIds,
+  getEffectiveItemRule,
   getGroupEffectiveInstructions,
   getGroupInheritance,
   getItemRule,
@@ -36,10 +37,11 @@ import {
   linkedDirectPropertyItemIds,
   withLinkedGroupProperty,
 } from "./stateInheritance";
-import { activateTransparency, getTransparentState, needsTransparencyEnforcement, restoreTransparency } from "./transparentState";
+import { activateTransparency, getTransparentState, needsTransparencyEnforcement, restoreTransparency, setTransparentItemVisible } from "./transparentState";
 
 let queue: Promise<void> = Promise.resolve();
 let writing = false;
+const DYNAMIC_FOG_LIGHT_METADATA_KEY = "rodeo.owlbear.dynamic-fog/light";
 export const isVirtualLayerWriteInFlight = () => writing;
 
 function serialized(work: () => Promise<void>) {
@@ -59,6 +61,34 @@ async function getState() {
 
 async function setState(state: VirtualLayerState) {
   await OBR.scene.setMetadata({ [VIRTUAL_LAYERS_METADATA_KEY]: state });
+}
+
+async function finishRestoredItems(restores: ReadonlyMap<string, boolean>) {
+  const ids = [...restores.keys()];
+  if (!ids.length) return;
+  const lightConfigs = new Map<string, Item["metadata"][string]>();
+  for (const item of await OBR.scene.items.getItems((item) => restores.has(item.id))) {
+    if (Object.prototype.hasOwnProperty.call(item.metadata, DYNAMIC_FOG_LIGHT_METADATA_KEY)) {
+      lightConfigs.set(item.id, item.metadata[DYNAMIC_FOG_LIGHT_METADATA_KEY]);
+    }
+  }
+  if (lightConfigs.size) {
+    await OBR.scene.items.updateItems([...lightConfigs.keys()], (draft) => {
+      for (const item of draft) delete item.metadata[DYNAMIC_FOG_LIGHT_METADATA_KEY];
+    }, true);
+  }
+  // Scene update promises can resolve before Dynamic Fog consumes the item
+  // change. Yield so it removes the old local light before the metadata is
+  // restored and a new light is created from the valid parent transform.
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  await OBR.scene.items.updateItems(ids, (draft) => {
+    for (const item of draft) {
+      if (lightConfigs.has(item.id)) {
+        item.metadata[DYNAMIC_FOG_LIGHT_METADATA_KEY] = lightConfigs.get(item.id)!;
+      }
+      if (restores.get(item.id)) item.visible = true;
+    }
+  }, true);
 }
 
 async function normalizeLayers(layers: Iterable<Item["layer"]>, state?: VirtualLayerState) {
@@ -120,6 +150,7 @@ export async function enforceStateInheritance(state?: VirtualLayerState) {
   const updates = calculateInheritanceUpdates(items, currentState);
   const directUpdates = items.filter((item) => getTransparentState(item)?.source === "direct" && needsTransparencyEnforcement(item));
   const updateIds = new Set([...updates.keys(), ...directUpdates.map((item) => item.id)]);
+  const restores = new Map<string, boolean>();
   if (updateIds.size) await OBR.scene.items.updateItems([...updateIds], (draft) => {
     for (const item of draft) {
       if (!updates.has(item.id)) {
@@ -134,15 +165,27 @@ export async function enforceStateInheritance(state?: VirtualLayerState) {
         activateTransparency(item, "direct");
         continue;
       }
+      let stagedRestore = false;
       if (Object.prototype.hasOwnProperty.call(instructions, "transparent")) {
         if (instructions.transparent) activateTransparency(item, "inherited");
-        else restoreTransparency(item);
-      } else if (getTransparentState(item)?.source === "inherited") restoreTransparency(item);
+        else {
+          const result = restoreTransparency(item, instructions.visible);
+          stagedRestore = result.restored;
+          if (result.restored) restores.set(item.id, result.reactivate);
+        }
+      } else if (getTransparentState(item)?.source === "inherited") {
+        const result = restoreTransparency(item, instructions.visible);
+        stagedRestore = result.restored;
+        if (result.restored) restores.set(item.id, result.reactivate);
+      }
       if (typeof instructions.disableHit === "boolean") item.disableHit = instructions.disableHit;
-      if (typeof instructions.visible === "boolean") item.visible = instructions.visible;
+      if (!stagedRestore && typeof instructions.visible === "boolean" && !setTransparentItemVisible(item, instructions.visible)) {
+        item.visible = instructions.visible;
+      }
       if (typeof instructions.locked === "boolean") item.locked = instructions.locked;
     }
-  });
+  }, true);
+  await finishRestoredItems(restores);
 }
 
 export type RuleScope = { kind: "native"; layer: Item["layer"] } | { kind: "group"; layer: Item["layer"]; groupId: string };
@@ -233,14 +276,22 @@ export function setScopeProperty(scope: RuleScope, property: StatefulProperty, v
       }
     }
     if (next !== state) await setState(next);
+    const restores = new Map<string, boolean>();
     if (directValues.size) await OBR.scene.items.updateItems([...directValues.keys()], (draft) => {
       for (const item of draft) {
         const directValue = directValues.get(item.id) ?? value;
         if (property === "transparent") {
-          if (directValue) activateTransparency(item, "direct"); else restoreTransparency(item);
+          if (directValue) activateTransparency(item, "direct");
+          else {
+            const result = restoreTransparency(item, getEffectiveItemRule(item, next).visible);
+            if (result.restored) restores.set(item.id, result.reactivate);
+          }
+        } else if (property === "visible" && setTransparentItemVisible(item, directValue)) {
+          // Transparent parents stay hidden while their logical visibility changes.
         } else item[property] = directValue;
       }
-    });
+    }, true);
+    await finishRestoredItems(restores);
     await enforceStateInheritance(next);
   });
 }
@@ -348,10 +399,20 @@ export async function readVirtualLayerState() {
 
 export function setItemTransparency(item: Item, value: boolean) {
   return serialized(async () => {
+    let restore: { restored: boolean; reactivate: boolean } = { restored: false, reactivate: false };
     await OBR.scene.items.updateItems([item.id], (items) => {
       if (value) activateTransparency(items[0], "direct");
-      else restoreTransparency(items[0]);
-    });
+      else restore = restoreTransparency(items[0]);
+    }, true);
+    if (restore.restored) await finishRestoredItems(new Map([[item.id, restore.reactivate]]));
+  });
+}
+
+export function setItemVisibility(item: Item, value: boolean) {
+  return serialized(async () => {
+    await OBR.scene.items.updateItems([item.id], (items) => {
+      if (!setTransparentItemVisible(items[0], value)) items[0].visible = value;
+    }, true);
   });
 }
 

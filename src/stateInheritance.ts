@@ -1,6 +1,6 @@
 import type { Item } from "@owlbear-rodeo/sdk";
 import { linkedVirtualLayers, resolveGroupId, type EnforcedItemState, type InheritedItemState, type StatefulProperty, type VirtualInheritance, type VirtualLayerState } from "./virtualLayers.ts";
-import { getTransparentState, isItemTransparent, needsTransparencyEnforcement } from "./transparentState.ts";
+import { getItemVisible, getTransparentState, isItemTransparent, needsTransparencyEnforcement } from "./transparentState.ts";
 
 const ITEM_INHERITANCE_METADATA_KEY = "com.ex-asperis.outliner/stateInheritance";
 const VIRTUAL_LAYER_METADATA_KEY = "com.ex-asperis.outliner/virtualLayer";
@@ -14,7 +14,7 @@ export interface ItemInheritanceState { independent: true; legacy: boolean }
 export interface InheritanceUpdate { instructions?: EnforcedItemState; preserveTransparency?: boolean }
 
 export function itemState(item: Pick<Item, "disableHit" | "locked" | "visible" | "metadata">): InheritedItemState {
-  return { disableHit: item.disableHit === true, locked: item.locked, visible: item.visible, transparent: isItemTransparent(item) };
+  return { disableHit: item.disableHit === true, locked: item.locked, visible: getItemVisible(item), transparent: isItemTransparent(item) };
 }
 
 export function parseItemInheritance(value: unknown): ItemInheritanceState | undefined {
@@ -121,7 +121,7 @@ export function calculateInheritanceUpdates(items: Item[], state: VirtualLayerSt
       ? instructions.transparent ? !transparentState || needsTransparencyEnforcement(item) : Boolean(transparentState)
       : transparentState?.source === "inherited";
     const hitMismatch = has(instructions, "disableHit") && (item.disableHit === true) !== instructions.disableHit;
-    const visibleMismatch = has(instructions, "visible") && item.visible !== instructions.visible;
+    const visibleMismatch = has(instructions, "visible") && getItemVisible(item) !== instructions.visible;
     const lockMismatch = has(instructions, "locked") && item.locked !== instructions.locked;
     if (transparencyMismatch || hitMismatch || visibleMismatch || lockMismatch) updates.set(item.id, { instructions });
   }
@@ -140,5 +140,5 @@ export function inheritanceVisualState(level: "native" | "virtual" | "item", act
 export function captureAggregateState(items: Array<Pick<Item, "disableHit" | "locked" | "visible" | "metadata">>): InheritedItemState {
   if (!items.length) return EMPTY_INHERITED_STATE;
   return { disableHit: items.every((item) => item.disableHit === true), locked: items.every((item) => item.locked),
-    visible: items.every((item) => item.visible), transparent: items.every((item) => isItemTransparent(item)) };
+    visible: items.every((item) => getItemVisible(item)), transparent: items.every((item) => isItemTransparent(item)) };
 }

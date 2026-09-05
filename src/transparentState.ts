@@ -3,12 +3,12 @@ import type { Item, Vector2 } from "@owlbear-rodeo/sdk";
 // Kept literal so this pure module can run in Node's stripped-TypeScript test mode.
 const ITEM_TRANSPARENCY_METADATA_KEY = "com.ex-asperis.outliner/transparentState";
 
-// Zero scale creates a singular attachment transform. Attached lights can fail
-// to recover when their parent is restored. Keep the transform invertible while
-// shrinking the item to a tiny size.
-export const TRANSPARENT_SCALE = 0.001;
-
 export type TransparencySource = "direct" | "inherited";
+
+export interface TransparencyRestoreResult {
+  restored: boolean;
+  reactivate: boolean;
+}
 
 export interface StoredTransparentState {
   scale: Vector2;
@@ -63,34 +63,55 @@ export function isItemTransparent(item: Pick<Item, "metadata">) {
   return Boolean(getTransparentState(item));
 }
 
+export function getItemVisible(item: Pick<Item, "visible" | "metadata">) {
+  return getTransparentState(item)?.visible ?? item.visible;
+}
+
+export function setTransparentItemVisible(item: Item, visible: boolean) {
+  const stored = getTransparentState(item);
+  if (!stored) return false;
+  item.metadata[ITEM_TRANSPARENCY_METADATA_KEY] = {
+    ...stored,
+    visible,
+    disableHit: stored.disableHit ?? (item.disableHit === true),
+  };
+  item.visible = false;
+  return true;
+}
+
 export function activateTransparency(item: Item, source: TransparencySource) {
   const stored = getTransparentState(item);
   const labelStyle = getImageTextStyle(item, true);
   const next: StoredTransparentState = stored
-    ? { scale: { ...stored.scale }, source, ...(stored.label ? { label: { ...stored.label } } : {}) }
+    ? {
+        scale: { ...stored.scale },
+        source,
+        visible: stored.visible ?? item.visible,
+        disableHit: stored.disableHit ?? (item.disableHit === true),
+        ...(stored.label ? { label: { ...stored.label } } : {}),
+      }
     : {
         scale: { ...item.scale },
         source,
+        visible: item.visible,
+        disableHit: item.disableHit === true,
       };
-  if (stored && typeof stored.visible === "boolean" && typeof stored.disableHit === "boolean") {
-    item.visible = stored.visible;
-    item.disableHit = stored.disableHit;
-  }
   if (labelStyle && !next.label) next.label = {
     fillOpacity: labelStyle.fillOpacity,
     strokeOpacity: labelStyle.strokeOpacity,
   };
   item.metadata[ITEM_TRANSPARENCY_METADATA_KEY] = next;
-  item.scale = { x: TRANSPARENT_SCALE, y: TRANSPARENT_SCALE };
+  item.scale = { x: 0, y: 0 };
+  item.visible = false;
   if (labelStyle) {
     labelStyle.fillOpacity = 0;
     labelStyle.strokeOpacity = 0;
   }
 }
 
-export function restoreTransparency(item: Item) {
+export function restoreTransparency(item: Item, finalVisible?: boolean): TransparencyRestoreResult {
   const stored = getTransparentState(item);
-  if (!stored) return false;
+  if (!stored) return { restored: false, reactivate: false };
   item.scale = { ...stored.scale };
   if (typeof stored.visible === "boolean" && typeof stored.disableHit === "boolean") {
     item.visible = stored.visible;
@@ -102,13 +123,16 @@ export function restoreTransparency(item: Item) {
     textStyle.strokeOpacity = stored.label.strokeOpacity;
   }
   delete item.metadata[ITEM_TRANSPARENCY_METADATA_KEY];
-  return true;
+  const reactivate = finalVisible ?? item.visible;
+  item.visible = false;
+  return { restored: true, reactivate };
 }
 
 export function needsTransparencyEnforcement(item: Item) {
   const stored = getTransparentState(item);
   if (!stored) return false;
   const labelStyle = getImageTextStyle(item, true);
-  return item.scale.x !== TRANSPARENT_SCALE || item.scale.y !== TRANSPARENT_SCALE || typeof stored.visible === "boolean" || typeof stored.disableHit === "boolean" ||
+  return item.scale.x !== 0 || item.scale.y !== 0 || item.visible ||
+    typeof stored.visible !== "boolean" || typeof stored.disableHit !== "boolean" ||
     Boolean(labelStyle && (!stored.label || labelStyle.fillOpacity !== 0 || labelStyle.strokeOpacity !== 0));
 }

@@ -25,8 +25,8 @@ import LocateIcon from "@mui/icons-material/CenterFocusStrongRounded";
 import type { StackOperation } from "./stacking";
 import { getItemActionReservedSlots, getItemActionVisibility } from "./itemActionVisibility";
 import { SendMenuButton } from "./SendMenuButton";
-import { getItemParentRule, getItemRule, hasInstructions, itemInheritanceLabel, inheritanceVisualState, type StatefulProperty } from "./stateInheritance";
-import { setItemTransparency, toggleItemInheritance } from "./virtualLayerService";
+import { getItemParentRule, getItemRule, hasInstructions, itemInheritanceLabel, inheritanceVisualState, itemState, type StatefulProperty } from "./stateInheritance";
+import { setItemTransparency, setItemVisibility, toggleItemInheritance } from "./virtualLayerService";
 import { InheritanceStateIcon } from "./InheritanceStateIcon";
 import { isItemTransparent } from "./transparentState";
 import { OpaqueIcon, TransparentIcon } from "./icons/other/TransparencyIcons";
@@ -85,6 +85,7 @@ export const ItemListItem = memo(function ({
   const [sendMenuOpen, setSendMenuOpen] = useState(false);
 
   const hasUpdatePermission = useItemHsaPermission(item, "UPDATE");
+  const displayed = { ...itemState(item), ...effectiveRule };
   const actionVisibility = getItemActionVisibility({
     selected,
     hovering,
@@ -92,9 +93,9 @@ export const ItemListItem = memo(function ({
     layerMenuOpen: sendMenuOpen,
     inheritanceActive: independent || hasInstructions(effectiveRule),
     transparent,
-    disableHit: item.disableHit,
-    locked: item.locked,
-    visible: item.visible,
+    disableHit: displayed.disableHit,
+    locked: displayed.locked,
+    visible: displayed.visible,
     hasUpdatePermission,
     isGm: role === "GM",
     manageInheritance: features.manageInheritance,
@@ -120,8 +121,9 @@ export const ItemListItem = memo(function ({
   }
 
   function handlePropertyClick(property: StatefulProperty) {
-    const current = effectiveRule[property] ?? (property === "transparent" ? transparent : property === "disableHit" ? item.disableHit === true : item[property]);
+    const current = displayed[property];
     if (property === "transparent") void setItemTransparency(item, !current);
+    else if (property === "visible") void setItemVisibility(item, !current);
     else void OBR.scene.items.updateItems([item], (items) => { items[0][property] = !current; });
   }
 
@@ -131,8 +133,6 @@ export const ItemListItem = memo(function ({
   const isInherited = (property: StatefulProperty) => !independent && Object.prototype.hasOwnProperty.call(parentRule, property);
   const stateColor = (property: StatefulProperty) => isInherited(property) ? "warning" : "default";
   const disabledInheritedSx = (property: StatefulProperty) => isInherited(property) ? { "&.Mui-disabled": { color: "warning.main" } } : undefined;
-  const displayed = { disableHit: item.disableHit === true, locked: item.locked, visible: item.visible, transparent, ...effectiveRule };
-
   return (
     <ListItem
       disablePadding

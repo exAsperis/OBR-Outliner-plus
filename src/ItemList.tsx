@@ -32,7 +32,7 @@ import { isLinkedVirtualLayer, mutuallyExclusiveVirtualLayers, resolveGroupId, U
 import type { DropPosition } from "./dragPosition";
 import { SendMenuButton } from "./SendMenuButton";
 import { getLayerPropertyState } from "./layerPropertyState";
-import { captureAggregateState, getGroupInheritance, getItemRule, getNativeRule, hasInstructions, inheritanceVisualState, type StatefulProperty } from "./stateInheritance";
+import { captureAggregateState, getGroupInheritance, getItemRule, getNativeRule, hasInstructions, inheritanceVisualState, itemState, type StatefulProperty } from "./stateInheritance";
 import { setScopeProperty, type RuleScope } from "./virtualLayerService";
 import { OverflowTooltipText } from "./OverflowTooltipText";
 import { InheritanceStateIcon } from "./InheritanceStateIcon";
@@ -134,7 +134,7 @@ function LayerPropertyControls({ items, scope, fog = false }: { items: Item[]; s
     if (getItemRule(item)) return false;
     return scope.kind === "group" || getGroupInheritance(state, item.layer, resolveGroupId(item, state)).mode === "pass-through";
   });
-  const aggregate = getLayerPropertyState(eligible);
+  const aggregate = getLayerPropertyState(eligible.map(itemState));
   const { mixedDisableHit, mixedLocked, mixedVisible } = aggregate;
   const allTransparent = eligible.length > 0 && eligible.every(isItemTransparent);
   const mixedTransparent = eligible.some(isItemTransparent) && !allTransparent;

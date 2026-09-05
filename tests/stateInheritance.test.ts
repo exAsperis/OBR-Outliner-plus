@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Item } from "@owlbear-rodeo/sdk";
 import { ITEM_INHERITANCE_METADATA_KEY } from "../src/constants.ts";
-import { activateTransparency, isItemTransparent, restoreTransparency, TRANSPARENT_SCALE } from "../src/transparentState.ts";
+import { activateTransparency, isItemTransparent, restoreTransparency } from "../src/transparentState.ts";
 import {
   calculateInheritanceUpdates,
   captureAggregateState,
@@ -13,6 +13,7 @@ import {
   getItemParentRule,
   getNativeRule,
   inheritanceVisualState,
+  itemState,
   itemInheritanceLabel,
   linkedDirectPropertyItemIds,
   withLinkedGroupProperty,
@@ -103,9 +104,10 @@ test("plans inherited transparency activation and restoration", () => {
   const target = item("target", "roofs");
   assert.deepEqual(calculateInheritanceUpdates([target], state).get("target"), { instructions: { transparent: true } });
   target.metadata["com.ex-asperis.outliner/transparentState"] = {
-    scale: { x: 1, y: 1 }, source: "inherited",
+    scale: { x: 1, y: 1 }, source: "inherited", visible: true, disableHit: false,
   };
-  target.scale = { x: TRANSPARENT_SCALE, y: TRANSPARENT_SCALE };
+  target.scale = { x: 0, y: 0 };
+  target.visible = false;
   assert.equal(calculateInheritanceUpdates([target], state).size, 0);
   const withoutRule: VirtualLayerState = { version: 2, layers: state.layers };
   assert.deepEqual(calculateInheritanceUpdates([target], withoutRule).get("target"), { instructions: {} });
@@ -114,7 +116,7 @@ test("plans inherited transparency activation and restoration", () => {
 test("allows visibility and click-through instructions to compose with transparency", () => {
   const target = item("compound", "roofs");
   target.metadata["com.ex-asperis.outliner/transparentState"] = { scale: { x: 1, y: 1 }, source: "inherited" };
-  target.scale = { x: TRANSPARENT_SCALE, y: TRANSPARENT_SCALE };
+  target.scale = { x: 0, y: 0 };
   target.visible = false;
   target.disableHit = true;
   const compound: VirtualLayerState = {
@@ -142,6 +144,13 @@ test("captures aggregate values and maps the new icon states", () => {
     { disableHit: true, locked: true, visible: false, metadata: {} },
     { disableHit: false, locked: true, visible: true, metadata: {} },
   ]), { disableHit: false, locked: true, visible: false, transparent: false });
+  const transparentVisible = item("transparent-visible");
+  activateTransparency(transparentVisible, "direct");
+  assert.equal(transparentVisible.visible, false);
+  assert.deepEqual(itemState(transparentVisible), {
+    disableHit: false, locked: false, visible: true, transparent: true,
+  });
+  assert.equal(captureAggregateState([transparentVisible]).visible, true);
   assert.equal(inheritanceVisualState("native", false), "disabled");
   assert.equal(inheritanceVisualState("native", true), "enabled");
   assert.equal(inheritanceVisualState("virtual", false, true), "blocked-virtual-layer");

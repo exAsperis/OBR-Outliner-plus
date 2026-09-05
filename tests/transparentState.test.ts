@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Item } from "@owlbear-rodeo/sdk";
-import { activateTransparency, getTransparentState, isItemTransparent, needsTransparencyEnforcement, parseTransparentState, restoreTransparency, TRANSPARENT_SCALE } from "../src/transparentState.ts";
+import { activateTransparency, getItemVisible, getTransparentState, isItemTransparent, needsTransparencyEnforcement, parseTransparentState, restoreTransparency, setTransparentItemVisible } from "../src/transparentState.ts";
 
 function item(): Item {
   return { id: "item", scale: { x: 2.5, y: -3 }, visible: false, disableHit: false, locked: false, metadata: {} } as Item;
@@ -16,19 +16,22 @@ function labeledImage(): Item {
   } as Item;
 }
 
-test("captures and restores scale without changing visibility or clickability", () => {
+test("captures scale and stages a visible restore without changing clickability", () => {
   const target = item();
-  activateTransparency(target, "direct");
-  assert.deepEqual(target.scale, { x: TRANSPARENT_SCALE, y: TRANSPARENT_SCALE });
-  assert.equal(target.visible, false);
-  assert.equal(target.disableHit, false);
-  assert.equal(isItemTransparent(target), true);
-  assert.deepEqual(getTransparentState(target), { scale: { x: 2.5, y: -3 }, source: "direct" });
   target.visible = true;
   target.disableHit = true;
-  assert.equal(restoreTransparency(target), true);
+  activateTransparency(target, "direct");
+  assert.deepEqual(target.scale, { x: 0, y: 0 });
+  assert.equal(target.visible, false);
+  assert.equal(target.disableHit, true);
+  assert.equal(isItemTransparent(target), true);
+  assert.equal(getItemVisible(target), true);
+  assert.deepEqual(getTransparentState(target), {
+    scale: { x: 2.5, y: -3 }, source: "direct", visible: true, disableHit: true,
+  });
+  assert.deepEqual(restoreTransparency(target), { restored: true, reactivate: true });
   assert.deepEqual(target.scale, { x: 2.5, y: -3 });
-  assert.equal(target.visible, true);
+  assert.equal(target.visible, false);
   assert.equal(target.disableHit, true);
   assert.equal(isItemTransparent(target), false);
 });
@@ -37,14 +40,16 @@ test("repeated activation preserves the first captured values while updating pro
   const target = item();
   activateTransparency(target, "direct");
   activateTransparency(target, "inherited");
-  assert.deepEqual(getTransparentState(target), { scale: { x: 2.5, y: -3 }, source: "inherited" });
+  assert.deepEqual(getTransparentState(target), {
+    scale: { x: 2.5, y: -3 }, source: "inherited", visible: false, disableHit: false,
+  });
 });
 
 test("ignores malformed metadata without inventing restoration values", () => {
   assert.equal(parseTransparentState({ scale: { x: 1 }, visible: true, disableHit: false, source: "direct" }), undefined);
   const target = item();
   target.metadata["com.ex-asperis.outliner/transparentState"] = { broken: true };
-  assert.equal(restoreTransparency(target), false);
+  assert.deepEqual(restoreTransparency(target), { restored: false, reactivate: false });
   assert.deepEqual(target.scale, { x: 2.5, y: -3 });
 });
 
@@ -75,10 +80,11 @@ test("upgrades existing transparency metadata by capturing the live label style"
   target.disableHit = true;
   assert.equal(needsTransparencyEnforcement(target), true);
   activateTransparency(target, "direct");
-  assert.equal(target.visible, true);
-  assert.equal(target.disableHit, false);
+  assert.equal(target.visible, false);
+  assert.equal(target.disableHit, true);
   assert.deepEqual(getTransparentState(target), {
-    scale: { x: 1, y: 1 }, source: "direct", label: { fillOpacity: 0.65, strokeOpacity: 0.35 },
+    scale: { x: 1, y: 1 }, source: "direct", visible: true, disableHit: false,
+    label: { fillOpacity: 0.65, strokeOpacity: 0.35 },
   });
   assert.deepEqual(getTransparentState(target)?.label, { fillOpacity: 0.65, strokeOpacity: 0.35 });
   assert.deepEqual(target.text.style, { fillOpacity: 0, strokeOpacity: 0 });
@@ -108,27 +114,47 @@ test("accepts current scale-only metadata", () => {
   });
 });
 
-test("transparency keeps attachment transforms invertible across repeated restores", () => {
+test("stages repeated visible restores after restoring the exact scale", () => {
   const target = item();
+  target.visible = true;
   const originalScale = { ...target.scale };
   for (let cycle = 0; cycle < 3; cycle++) {
     activateTransparency(target, "inherited");
-    assert.ok(target.scale.x > 0 && target.scale.x < 0.01);
-    assert.ok(target.scale.y > 0 && target.scale.y < 0.01);
-    assert.ok(Number.isFinite(1 / (target.scale.x * target.scale.y)));
+    assert.deepEqual(target.scale, { x: 0, y: 0 });
     assert.equal(needsTransparencyEnforcement(target), false);
-    restoreTransparency(target);
+    assert.deepEqual(restoreTransparency(target), { restored: true, reactivate: true });
     assert.deepEqual(target.scale, originalScale);
+    assert.equal(target.visible, false);
+    target.visible = true;
   }
 });
 
-test("migrates zero-scale transparency without losing the original scale", () => {
+test("migrates nonzero-scale transparency without losing the original scale", () => {
   const target = item();
   activateTransparency(target, "direct");
-  target.scale = { x: 0, y: 0 };
+  target.scale = { x: 0.001, y: 0.001 };
   assert.equal(needsTransparencyEnforcement(target), true);
   activateTransparency(target, "direct");
   assert.equal(needsTransparencyEnforcement(target), false);
-  restoreTransparency(target);
+  assert.deepEqual(target.scale, { x: 0, y: 0 });
+  assert.deepEqual(restoreTransparency(target), { restored: true, reactivate: false });
   assert.deepEqual(target.scale, { x: 2.5, y: -3 });
+});
+
+test("does not reactivate a restore whose final inherited visibility is false", () => {
+  const target = item();
+  target.visible = true;
+  activateTransparency(target, "inherited");
+  assert.deepEqual(restoreTransparency(target, false), { restored: true, reactivate: false });
+  assert.equal(target.visible, false);
+});
+
+test("changes logical visibility without exposing a transparent parent", () => {
+  const target = item();
+  activateTransparency(target, "direct");
+  assert.equal(setTransparentItemVisible(target, true), true);
+  assert.equal(target.visible, false);
+  assert.equal(getItemVisible(target), true);
+  assert.equal(needsTransparencyEnforcement(target), false);
+  assert.deepEqual(restoreTransparency(target), { restored: true, reactivate: true });
 });

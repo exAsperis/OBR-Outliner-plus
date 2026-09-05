@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Item } from "@owlbear-rodeo/sdk";
 import { ITEM_INHERITANCE_METADATA_KEY } from "../src/constants.ts";
-import { activateTransparency, isItemTransparent, restoreTransparency } from "../src/transparentState.ts";
+import { activateTransparency, isItemTransparent, restoreTransparency, TRANSPARENT_SCALE } from "../src/transparentState.ts";
 import {
   calculateInheritanceUpdates,
   captureAggregateState,
@@ -105,7 +105,7 @@ test("plans inherited transparency activation and restoration", () => {
   target.metadata["com.ex-asperis.outliner/transparentState"] = {
     scale: { x: 1, y: 1 }, source: "inherited",
   };
-  target.scale = { x: 0, y: 0 };
+  target.scale = { x: TRANSPARENT_SCALE, y: TRANSPARENT_SCALE };
   assert.equal(calculateInheritanceUpdates([target], state).size, 0);
   const withoutRule: VirtualLayerState = { version: 2, layers: state.layers };
   assert.deepEqual(calculateInheritanceUpdates([target], withoutRule).get("target"), { instructions: {} });
@@ -114,7 +114,7 @@ test("plans inherited transparency activation and restoration", () => {
 test("allows visibility and click-through instructions to compose with transparency", () => {
   const target = item("compound", "roofs");
   target.metadata["com.ex-asperis.outliner/transparentState"] = { scale: { x: 1, y: 1 }, source: "inherited" };
-  target.scale = { x: 0, y: 0 };
+  target.scale = { x: TRANSPARENT_SCALE, y: TRANSPARENT_SCALE };
   target.visible = false;
   target.disableHit = true;
   const compound: VirtualLayerState = {

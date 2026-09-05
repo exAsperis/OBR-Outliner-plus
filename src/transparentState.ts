@@ -3,6 +3,11 @@ import type { Item, Vector2 } from "@owlbear-rodeo/sdk";
 // Kept literal so this pure module can run in Node's stripped-TypeScript test mode.
 const ITEM_TRANSPARENCY_METADATA_KEY = "com.ex-asperis.outliner/transparentState";
 
+// Zero scale creates a singular attachment transform. Attached lights can fail
+// to recover when their parent is restored. Keep the transform invertible while
+// shrinking the item to a tiny size.
+export const TRANSPARENT_SCALE = 0.001;
+
 export type TransparencySource = "direct" | "inherited";
 
 export interface StoredTransparentState {
@@ -76,7 +81,7 @@ export function activateTransparency(item: Item, source: TransparencySource) {
     strokeOpacity: labelStyle.strokeOpacity,
   };
   item.metadata[ITEM_TRANSPARENCY_METADATA_KEY] = next;
-  item.scale = { x: 0, y: 0 };
+  item.scale = { x: TRANSPARENT_SCALE, y: TRANSPARENT_SCALE };
   if (labelStyle) {
     labelStyle.fillOpacity = 0;
     labelStyle.strokeOpacity = 0;
@@ -104,6 +109,6 @@ export function needsTransparencyEnforcement(item: Item) {
   const stored = getTransparentState(item);
   if (!stored) return false;
   const labelStyle = getImageTextStyle(item, true);
-  return item.scale.x !== 0 || item.scale.y !== 0 || typeof stored.visible === "boolean" || typeof stored.disableHit === "boolean" ||
+  return item.scale.x !== TRANSPARENT_SCALE || item.scale.y !== TRANSPARENT_SCALE || typeof stored.visible === "boolean" || typeof stored.disableHit === "boolean" ||
     Boolean(labelStyle && (!stored.label || labelStyle.fillOpacity !== 0 || labelStyle.strokeOpacity !== 0));
 }

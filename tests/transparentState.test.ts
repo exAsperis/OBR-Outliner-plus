@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Item } from "@owlbear-rodeo/sdk";
-import { activateTransparency, getTransparentState, isItemTransparent, needsTransparencyEnforcement, parseTransparentState, restoreTransparency } from "../src/transparentState.ts";
+import { activateTransparency, getTransparentState, isItemTransparent, needsTransparencyEnforcement, parseTransparentState, restoreTransparency, TRANSPARENT_SCALE } from "../src/transparentState.ts";
 
 function item(): Item {
   return { id: "item", scale: { x: 2.5, y: -3 }, visible: false, disableHit: false, locked: false, metadata: {} } as Item;
@@ -19,7 +19,7 @@ function labeledImage(): Item {
 test("captures and restores scale without changing visibility or clickability", () => {
   const target = item();
   activateTransparency(target, "direct");
-  assert.deepEqual(target.scale, { x: 0, y: 0 });
+  assert.deepEqual(target.scale, { x: TRANSPARENT_SCALE, y: TRANSPARENT_SCALE });
   assert.equal(target.visible, false);
   assert.equal(target.disableHit, false);
   assert.equal(isItemTransparent(target), true);
@@ -106,4 +106,29 @@ test("accepts current scale-only metadata", () => {
   assert.deepEqual(parseTransparentState({ scale: { x: 1, y: 1 }, source: "direct" }), {
     scale: { x: 1, y: 1 }, source: "direct",
   });
+});
+
+test("transparency keeps attachment transforms invertible across repeated restores", () => {
+  const target = item();
+  const originalScale = { ...target.scale };
+  for (let cycle = 0; cycle < 3; cycle++) {
+    activateTransparency(target, "inherited");
+    assert.ok(target.scale.x > 0 && target.scale.x < 0.01);
+    assert.ok(target.scale.y > 0 && target.scale.y < 0.01);
+    assert.ok(Number.isFinite(1 / (target.scale.x * target.scale.y)));
+    assert.equal(needsTransparencyEnforcement(target), false);
+    restoreTransparency(target);
+    assert.deepEqual(target.scale, originalScale);
+  }
+});
+
+test("migrates zero-scale transparency without losing the original scale", () => {
+  const target = item();
+  activateTransparency(target, "direct");
+  target.scale = { x: 0, y: 0 };
+  assert.equal(needsTransparencyEnforcement(target), true);
+  activateTransparency(target, "direct");
+  assert.equal(needsTransparencyEnforcement(target), false);
+  restoreTransparency(target);
+  assert.deepEqual(target.scale, { x: 2.5, y: -3 });
 });

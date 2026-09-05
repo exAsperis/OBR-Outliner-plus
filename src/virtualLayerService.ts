@@ -29,6 +29,7 @@ import {
 import {
   calculateInheritanceUpdates,
   directGroupItemIds,
+  directGroupTransparency,
   directNativeItemIds,
   getEffectiveItemRule,
   getGroupEffectiveInstructions,
@@ -351,6 +352,8 @@ export function assignItems(itemIds: string[], virtualLayerId?: string, nativeLa
     const affectedLayers = new Set<Item["layer"]>(targets.map((item) => item.layer));
     affectedLayers.add(destination);
     const assignmentUpdates = calculateAssignmentUpdates(allItems, state, itemIds, destination, definition?.id);
+    const destinationTransparency = directGroupTransparency(allItems, state, destination, definition?.id ?? "__unassigned__", new Set(itemIds));
+    const restores = new Map<string, boolean>();
     await OBR.scene.items.updateItems(itemIds, (draft) => {
       for (const item of draft) {
         const update = assignmentUpdates.get(item.id);
@@ -358,8 +361,14 @@ export function assignItems(itemIds: string[], virtualLayerId?: string, nativeLa
         item.layer = update.layer;
         if (update.virtualLayerId) item.metadata[VIRTUAL_LAYER_METADATA_KEY] = { virtualLayerId: update.virtualLayerId };
         else delete item.metadata[VIRTUAL_LAYER_METADATA_KEY];
+        if (destinationTransparency === true) activateTransparency(item, "direct");
+        else if (destinationTransparency === false) {
+          const result = restoreTransparency(item, getEffectiveItemRule(item, state).visible);
+          if (result.restored) restores.set(item.id, result.reactivate);
+        }
       }
     });
+    await finishRestoredItems(restores);
     let refreshed = await OBR.scene.items.getItems();
     if (targetId) {
       const groupItems = refreshed.filter((item) => item.layer === destination &&

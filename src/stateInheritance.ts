@@ -1,5 +1,5 @@
 import type { Item } from "@owlbear-rodeo/sdk";
-import { linkedVirtualLayers, resolveGroupId, type EnforcedItemState, type InheritedItemState, type StatefulProperty, type VirtualInheritance, type VirtualLayerState } from "./virtualLayers.ts";
+import { linkedVirtualLayers, mutuallyExclusiveVirtualLayers, resolveGroupId, type EnforcedItemState, type InheritedItemState, type StatefulProperty, type VirtualInheritance, type VirtualLayerState } from "./virtualLayers.ts";
 import { getItemVisible, getTransparentState, isItemTransparent, needsTransparencyEnforcement } from "./transparentState.ts";
 
 const ITEM_INHERITANCE_METADATA_KEY = "com.ex-asperis.outliner/stateInheritance";
@@ -84,6 +84,21 @@ export function linkedDirectPropertyItemIds(items: Item[], state: VirtualLayerSt
   return linkedVirtualLayers(state, sourceId).filter((layer) =>
     !Object.prototype.hasOwnProperty.call(getGroupEffectiveInstructions(state, layer.obrLayer, layer.id), property))
     .flatMap((layer) => items.filter((item) => item.layer === layer.obrLayer && resolveGroupId(item, state) === layer.id).map((item) => item.id));
+}
+
+export function directGroupTransparency(items: Item[], state: VirtualLayerState, layer: Item["layer"], groupId: string, excluding: ReadonlySet<string> = new Set()) {
+  const instructions = getGroupEffectiveInstructions(state, layer, groupId);
+  if (Object.prototype.hasOwnProperty.call(instructions, "transparent")) return instructions.transparent;
+  const ids = groupId === "__unassigned__"
+    ? directGroupItemIds(items, state, layer, groupId)
+    : linkedDirectPropertyItemIds(items, state, groupId, "transparent");
+  const candidates = items.filter((item) => ids.includes(item.id) && !excluding.has(item.id));
+  if (candidates.length) return candidates.every(isItemTransparent);
+  if (groupId === "__unassigned__") return undefined;
+  const siblingIds = new Set(mutuallyExclusiveVirtualLayers(state, groupId).map((sibling) => sibling.id));
+  const siblingItems = items.filter((item) => siblingIds.has(resolveGroupId(item, state)) && !getItemRule(item));
+  if (!siblingItems.length) return undefined;
+  return siblingItems.some((item) => !isItemTransparent(item));
 }
 
 export function withLinkedGroupProperty(state: VirtualLayerState, sourceId: string, property: StatefulProperty, value: boolean): VirtualLayerState {

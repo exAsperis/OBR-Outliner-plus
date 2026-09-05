@@ -6,6 +6,7 @@ import { activateTransparency, isItemTransparent, restoreTransparency } from "..
 import {
   calculateInheritanceUpdates,
   captureAggregateState,
+  directGroupTransparency,
   directNativeItemIds,
   getEffectiveItemRule,
   getGroupEffectiveInstructions,
@@ -50,6 +51,21 @@ function item(id: string, assignment?: string, independent: unknown = false): It
     },
   } as Item;
 }
+
+test("derives a destination group's direct transparency for item moves", () => {
+  const family: VirtualLayerState = { version: 2, layers: [
+    { id: "day", name: "Manor: Day", obrLayer: "PROP", order: 0 },
+    { id: "night", name: "Manor: Night", obrLayer: "PROP", order: 1 },
+  ] };
+  const day = item("day-item", "day");
+  const night = item("night-item", "night");
+  activateTransparency(night, "direct");
+  assert.equal(directGroupTransparency([day, night], family, "PROP", "day", new Set([night.id])), false);
+  assert.equal(directGroupTransparency([day, night], family, "PROP", "night", new Set([day.id])), true);
+  assert.equal(directGroupTransparency([day], family, "PROP", "night"), true);
+  activateTransparency(day, "direct");
+  assert.equal(directGroupTransparency([day], family, "PROP", "night"), false);
+});
 
 test("migrates legacy full rules into version-2 enforcement records", () => {
   const parsed = parseVirtualLayerState({

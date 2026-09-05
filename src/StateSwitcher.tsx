@@ -1,5 +1,5 @@
 import { closestCenter, DndContext, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { horizontalListSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
+import { rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -19,7 +19,7 @@ type StatefulLayer = StatefulVirtualLayerGroup["states"][number];
 function StateButton({ group, state, active, disabled, onActivate }: { group: string; state: StatefulLayer; active: boolean; disabled: boolean; onActivate: () => void }) {
   const id = `${group.toLocaleLowerCase()}\u0000${state.name.toLocaleLowerCase()}`;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, data: { group, state: state.name } });
-  return <Button ref={setNodeRef} {...attributes} {...listeners} size="small" color="info" variant={active ? "contained" : "outlined"} disabled={disabled} aria-pressed={active} onClick={onActivate} sx={{ flexShrink: 0, minWidth: 0, py: 0.25, px: 1, textTransform: "none", transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 1 : undefined, cursor: isDragging ? "grabbing" : "grab" }}>
+  return <Button ref={setNodeRef} {...attributes} {...listeners} size="small" color="info" variant={active ? "contained" : "outlined"} disabled={disabled} aria-pressed={active} onClick={onActivate} sx={{ minWidth: 0, maxWidth: "100%", py: 0.25, px: 1, whiteSpace: "normal", textTransform: "none", transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 1 : undefined, cursor: isDragging ? "grabbing" : "grab" }}>
     {state.name}
   </Button>;
 }
@@ -52,8 +52,8 @@ function StateGroupRow({ group, switching, activate }: { group: StatefulVirtualL
     <Typography variant="caption" fontWeight={700} noWrap sx={{ minWidth: 72, maxWidth: 120 }} title={group.name}>{group.name}</Typography>
     <Tooltip title={`Previous ${group.name} state`}><span><IconButton size="small" disabled={switching || group.states.length < 2} aria-label={`Previous ${group.name} state`} onClick={() => step(-1)}><PreviousIcon fontSize="small" /></IconButton></span></Tooltip>
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => { dragging.current = true; }} onDragCancel={() => { dragging.current = false; }} onDragEnd={dragEnd}>
-      <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
-        <Stack direction="row" spacing={0.5} sx={{ minWidth: 0, overflowX: "auto", pb: 0.25 }}>
+      <SortableContext items={ids} strategy={rectSortingStrategy}>
+        <Stack direction="row" sx={{ minWidth: 0, flex: 1, flexWrap: "wrap", gap: 0.5, pb: 0.25 }}>
           {group.states.map((state, index) => {
             return <StateButton key={state.name.toLocaleLowerCase()} group={group.name} state={state} active={activeStates[index]} disabled={switching} onActivate={() => { if (!dragging.current) activate(state); }} />;
           })}

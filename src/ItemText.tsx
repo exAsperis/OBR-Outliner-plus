@@ -22,15 +22,15 @@ export function ItemText({ item }: { item: Item }) {
   }, [item, role]);
 
   if (isTextable(item)) {
-    return <TextableText item={item} name={name} />;
+    return <TextableText item={item} name={name} zIndex={item.zIndex} />;
   } else {
     return (
-      <ListItemText sx={{ minWidth: 0 }} primary={<OverflowTooltipText text={name} />} />
+      <ListItemText sx={{ minWidth: 0 }} primary={<OverflowTooltipText text={name} detail={`Z-index: ${item.zIndex}`} />} />
     );
   }
 }
 
-function TextableText({ item, name }: { item: Textable; name: string }) {
+function TextableText({ item, name, zIndex }: { item: Textable; name: string; zIndex: number }) {
   const plainText = useMemo(() => {
     if (item.text.type === "PLAIN") {
       return item.text.plainText;
@@ -42,7 +42,7 @@ function TextableText({ item, name }: { item: Textable; name: string }) {
   return (
     <ListItemText
       sx={{ minWidth: 0 }}
-      primary={<OverflowTooltipText text={plainText || name} />}
+      primary={<OverflowTooltipText text={plainText || name} detail={`Z-index: ${zIndex}`} />}
     />
   );
 }

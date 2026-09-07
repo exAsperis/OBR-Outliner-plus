@@ -2,7 +2,7 @@ import Box from "@mui/material/Box";
 import Tooltip from "@mui/material/Tooltip";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
-export function OverflowTooltipText({ text, children = text }: { text: string; children?: ReactNode }) {
+export function OverflowTooltipText({ text, children = text, detail }: { text: string; children?: ReactNode; detail?: ReactNode }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [truncated, setTruncated] = useState(false);
 
@@ -16,7 +16,14 @@ export function OverflowTooltipText({ text, children = text }: { text: string; c
     return () => observer.disconnect();
   }, [text]);
 
-  return <Tooltip title={truncated ? text : ""} disableInteractive>
+  const title = detail === undefined
+    ? truncated ? text : ""
+    : <Box>
+      <Box>{text}</Box>
+      <Box sx={{ color: "text.secondary", fontSize: "0.75rem" }}>{detail}</Box>
+    </Box>;
+
+  return <Tooltip title={title} disableInteractive>
     <Box ref={ref} component="span" sx={{ display: "block", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
       {children}
     </Box>

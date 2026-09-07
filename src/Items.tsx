@@ -17,6 +17,7 @@ import { useLayerDisplaySettings } from "./layerSettings";
 import ListItemText from "@mui/material/ListItemText";
 import ListItemButton from "@mui/material/ListItemButton";
 import Collapse from "@mui/material/Collapse";
+import { getVisibleSelectionRange } from "./hierarchySelection";
 
 export function Items({ search }: { search: string }) {
   const items = useOwlbearStore((state) => state.items);
@@ -55,8 +56,7 @@ export function Items({ search }: { search: string }) {
     let next: string[];
     if (event.metaKey || event.ctrlKey) next = current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id];
     else if (event.shiftKey && current.length) {
-      const a = shownIds.indexOf(current[current.length - 1]); const b = shownIds.indexOf(item.id);
-      next = [...new Set([...current, ...shownIds.slice(Math.min(a, b), Math.max(a, b) + 1)])];
+      next = getVisibleSelectionRange(shown, current[current.length - 1], item.id, (entry) => resolveGroupId(entry, virtualLayers));
     } else next = [item.id];
     if (next.length) await OBR.player.select(next); else await OBR.player.deselect();
   }

@@ -6,6 +6,7 @@ import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import HideAllStatesIcon from "@mui/icons-material/BlockRounded";
 import PreviousIcon from "@mui/icons-material/ChevronLeftRounded";
 import NextIcon from "@mui/icons-material/ChevronRightRounded";
 import { useMemo, useRef, useState } from "react";
@@ -24,17 +25,19 @@ function StateButton({ group, state, active, disabled, onActivate }: { group: st
   </Button>;
 }
 
-function StateGroupRow({ group, switching, activate }: { group: StatefulVirtualLayerGroup; switching: boolean; activate: (state: StatefulLayer) => void }) {
+function StateGroupRow({ group, switching, activate, hideAll }: { group: StatefulVirtualLayerGroup; switching: boolean; activate: (state: StatefulLayer) => void; hideAll: () => void }) {
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const items = useOwlbearStore((state) => state.items);
   const dragging = useRef(false);
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 5 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }), useSensor(KeyboardSensor));
   const ids = group.states.map((state) => `${group.name.toLocaleLowerCase()}\u0000${state.name.toLocaleLowerCase()}`);
-  const activeStates = group.states.map((state) => {
+  const stateItems = group.states.map((state) => {
     const layerIds = new Set(state.layers.map((layer) => layer.id));
-    const stateItems = items.filter((item) => layerIds.has(resolveGroupId(item, virtualLayers)));
-    return stateItems.length > 0 && stateItems.every((item) => !isItemTransparent(item));
+    return items.filter((item) => layerIds.has(resolveGroupId(item, virtualLayers)));
   });
+  const activeStates = stateItems.map((items) => items.length > 0 && items.every((item) => !isItemTransparent(item)));
+  const allStateItems = stateItems.flat();
+  const allStatesHidden = allStateItems.length > 0 && allStateItems.every(isItemTransparent);
   const activeIndex = activeStates.findIndex(Boolean);
   const step = (direction: -1 | 1) => {
     const fallback = direction < 0 ? group.states.length - 1 : 0;
@@ -50,6 +53,7 @@ function StateGroupRow({ group, switching, activate }: { group: StatefulVirtualL
 
   return <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minWidth: 0 }}>
     <Typography variant="caption" fontWeight={700} noWrap sx={{ minWidth: 72, maxWidth: 120 }} title={group.name}>{group.name}</Typography>
+    <Tooltip title={`Hide all ${group.name} states`}><span><IconButton size="small" color={allStatesHidden ? "info" : "default"} disabled={switching} aria-label={`Hide all ${group.name} states`} aria-pressed={allStatesHidden} onClick={hideAll}><HideAllStatesIcon fontSize="small" /></IconButton></span></Tooltip>
     <Tooltip title={`Previous ${group.name} state`}><span><IconButton size="small" disabled={switching || group.states.length < 2} aria-label={`Previous ${group.name} state`} onClick={() => step(-1)}><PreviousIcon fontSize="small" /></IconButton></span></Tooltip>
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => { dragging.current = true; }} onDragCancel={() => { dragging.current = false; }} onDragEnd={dragEnd}>
       <SortableContext items={ids} strategy={rectSortingStrategy}>
@@ -79,7 +83,18 @@ export function StateSwitcher() {
     }
   };
 
+  const hideAll = async (group: StatefulVirtualLayerGroup) => {
+    setSwitching(true);
+    try {
+      for (const state of group.states) {
+        for (const layer of state.layers) await setScopeProperty({ kind: "group", layer: layer.obrLayer, groupId: layer.id }, "transparent", true);
+      }
+    } finally {
+      setSwitching(false);
+    }
+  };
+
   return <Stack component="section" aria-label="Scene states" spacing={0.75} sx={{ px: 1, py: 0.75, flexShrink: 0, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper", maxHeight: "35vh", overflowY: "auto" }}>
-    {groups.map((group) => <StateGroupRow key={group.name.toLocaleLowerCase()} group={group} switching={switching} activate={(state) => void activate(state)} />)}
+    {groups.map((group) => <StateGroupRow key={group.name.toLocaleLowerCase()} group={group} switching={switching} activate={(state) => void activate(state)} hideAll={() => void hideAll(group)} />)}
   </Stack>;
 }

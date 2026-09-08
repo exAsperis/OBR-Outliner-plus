@@ -12,11 +12,16 @@ import { useOwlbearStore } from "./useOwlbearStore";
 import { UNASSIGNED_ID, orderedGroupIds, resolveGroupId, type VirtualLayerDefinition } from "./virtualLayers";
 import { addVirtualLayer, assignItems, moveStackingGroup, removeVirtualLayer, stackVirtualLayer, updateVirtualLayerName } from "./virtualLayerService";
 import { getVerticalDropPosition, getVerticalDropPositionAtPoint, type DropPosition } from "./dragPosition";
-import { getOutlinerLayers } from "./layers";
-import { useLayerDisplaySettings } from "./layerSettings";
+import { getOutlinerLayers, OUTLINER_LAYERS_TOP_TO_BOTTOM } from "./layers";
+import { setLayersEnabled, useLayerDisplaySettings } from "./layerSettings";
 import ListItemText from "@mui/material/ListItemText";
 import ListItemButton from "@mui/material/ListItemButton";
 import Collapse from "@mui/material/Collapse";
+import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
+import Tooltip from "@mui/material/Tooltip";
+import HideEmptyLayersIcon from "@mui/icons-material/LayersClearRounded";
+import ShowPopulatedLayersIcon from "@mui/icons-material/LayersRounded";
 import { getVisibleSelectionRange } from "./hierarchySelection";
 
 export function Items({ search }: { search: string }) {
@@ -28,6 +33,11 @@ export function Items({ search }: { search: string }) {
   const searching = Boolean(search);
   const availableLayers = useMemo(() => new Set(getOutlinerLayers(role, layerSettings.enabledLayers)), [layerSettings.enabledLayers, role]);
   const hiddenLayerItemCount = useMemo(() => items.filter((item) => !availableLayers.has(item.layer)).length, [availableLayers, items]);
+  const roleLayers = useMemo(() => getOutlinerLayers(role, OUTLINER_LAYERS_TOP_TO_BOTTOM), [role]);
+  const populatedLayers = useMemo(() => new Set(items.map((item) => item.layer)), [items]);
+  const enabledLayers = new Set(layerSettings.enabledLayers);
+  const emptyEnabledLayers = roleLayers.filter((layer) => enabledLayers.has(layer) && !populatedLayers.has(layer));
+  const populatedHiddenLayers = roleLayers.filter((layer) => !enabledLayers.has(layer) && populatedLayers.has(layer));
   const fuse = useMemo(() => new Fuse(items.map((item) => ({ id: item.id, name: item.name, layer: item.layer, type: item.type, text: isTextable(item) ? `${item.text.plainText} ${toPlainText(item.text.richText)}` : "", shape: isShape(item) ? item.shapeType : "" })), { keys: ["id", "name", "layer", "type", "text", "shape"], threshold: 0.25 }), [items]);
   const filtered = useMemo(() => search ? items.filter((item) => new Set(fuse.search(search).map((result) => result.item.id)).has(item.id)) : items, [fuse, items, search]);
   const shown = useMemo(() => filtered.filter((item) => availableLayers.has(item.layer) && !(!item.visible && role === "PLAYER")).sort((a, b) => b.zIndex - a.zIndex || a.id.localeCompare(b.id)), [availableLayers, filtered, role]);
@@ -186,7 +196,22 @@ export function Items({ search }: { search: string }) {
       <ListItemText
         primary={`Total [${items.length}${hiddenLayerItemCount ? ` (+${hiddenLayerItemCount} in hidden layers)` : ""}]`}
         primaryTypographyProps={{ variant: "body2" }}
+        sx={{ minWidth: 0 }}
       />
+      <Stack direction="row" flexShrink={0}>
+        <Tooltip title="Hide empty layers"><span><IconButton
+          size="small"
+          disabled={!emptyEnabledLayers.length}
+          aria-label="Hide empty layers"
+          onClick={(event) => { event.stopPropagation(); setLayersEnabled(emptyEnabledLayers, false); }}
+        ><HideEmptyLayersIcon fontSize="small" /></IconButton></span></Tooltip>
+        <Tooltip title="Show all populated layers"><span><IconButton
+          size="small"
+          disabled={!populatedHiddenLayers.length}
+          aria-label="Show all populated layers"
+          onClick={(event) => { event.stopPropagation(); setLayersEnabled(populatedHiddenLayers, true); }}
+        ><ShowPopulatedLayersIcon fontSize="small" /></IconButton></span></Tooltip>
+      </Stack>
     </ListItemButton>
     <Collapse in={hierarchyOpen} id="outliner-hierarchy">
       <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>

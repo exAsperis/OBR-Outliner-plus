@@ -40,6 +40,13 @@ export function Outliner() {
   const activeProfile = isMinimized ? layout.minimizedOrientation : "full";
   const activeDimensions = activeProfile === "full" ? layout.full : sceneMinimizedLayout.dimensions[activeProfile];
 
+  useEffect(() => {
+    if (!isMinimized) return;
+    const backgroundColor = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = "transparent";
+    return () => { document.body.style.backgroundColor = backgroundColor; };
+  }, [isMinimized]);
+
   const updateFullProfile = useCallback((dimensions: OutlinerDimensions, persist: boolean) => {
     const next = { ...layoutRef.current, full: dimensions };
     layoutRef.current = next;
@@ -178,7 +185,7 @@ export function Outliner() {
     <Stack
       height="100vh"
       sx={{
-        bgcolor: "background.default",
+        bgcolor: isMinimized ? "transparent" : "background.default",
         ".MuiCardHeader-action": {
           mr: searchExpanded ? 0 : undefined,
           flexShrink: searchExpanded ? 1 : undefined,

@@ -26,7 +26,7 @@ type StatefulLayer = StatefulVirtualLayerGroup["states"][number];
 function StateButton({ group, state, active, disabled, onActivate }: { group: string; state: StatefulLayer; active: boolean; disabled: boolean; onActivate: () => void }) {
   const id = `${group.toLocaleLowerCase()}\u0000${state.name.toLocaleLowerCase()}`;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, data: { group, state: state.name } });
-  return <Button ref={setNodeRef} {...attributes} {...listeners} size="small" color="info" variant={active ? "contained" : "outlined"} disabled={disabled} aria-pressed={active} onClick={onActivate} sx={{ minWidth: 0, maxWidth: "100%", py: 0.25, px: 1, whiteSpace: "normal", textTransform: "none", transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 1 : undefined, cursor: isDragging ? "grabbing" : "grab" }}>
+  return <Button ref={setNodeRef} {...attributes} {...listeners} size="small" color={active ? "primary" : "inherit"} variant={active ? "contained" : "outlined"} disabled={disabled} aria-pressed={active} onClick={onActivate} sx={{ minWidth: 0, maxWidth: "100%", py: 0.25, px: 1, whiteSpace: "normal", textTransform: "none", transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 1 : undefined, cursor: isDragging ? "grabbing" : "grab" }}>
     {state.name}
   </Button>;
 }
@@ -60,7 +60,7 @@ function StateGroupRow({ group, switching, activate, hideAll, orientation }: { g
   const vertical = orientation === "vertical";
   return <Stack direction={vertical ? "column" : "row"} alignItems="center" spacing={0.75} sx={{ minWidth: 0, flexShrink: 0 }}>
     <Typography variant="caption" fontWeight={700} noWrap sx={{ minWidth: vertical ? 0 : 72, maxWidth: 120, textAlign: vertical ? "center" : undefined }} title={group.name}>{group.name}</Typography>
-    <Tooltip title={`Hide all ${group.name} states`}><span><IconButton size="small" color={allStatesHidden ? "info" : "default"} disabled={switching} aria-label={`Hide all ${group.name} states`} aria-pressed={allStatesHidden} onClick={hideAll}><HideAllStatesIcon fontSize="small" /></IconButton></span></Tooltip>
+    <Tooltip title={`Hide all ${group.name} states`}><span><IconButton size="small" color={allStatesHidden ? "primary" : "default"} disabled={switching} aria-label={`Hide all ${group.name} states`} aria-pressed={allStatesHidden} onClick={hideAll}><HideAllStatesIcon fontSize="small" /></IconButton></span></Tooltip>
     <Tooltip title={`Previous ${group.name} state`}><span><IconButton size="small" disabled={switching || group.states.length < 2} aria-label={`Previous ${group.name} state`} onClick={() => step(-1)}>{vertical ? <PreviousVerticalIcon fontSize="small" /> : <PreviousIcon fontSize="small" />}</IconButton></span></Tooltip>
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => { dragging.current = true; }} onDragCancel={() => { dragging.current = false; }} onDragEnd={dragEnd}>
       <SortableContext items={ids} strategy={vertical ? verticalListSortingStrategy : rectSortingStrategy}>

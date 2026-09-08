@@ -7,7 +7,7 @@ import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
 import SettingsIcon from "@mui/icons-material/SettingsRounded";
 import MinimizeIcon from "@mui/icons-material/CloseFullscreenRounded";
 import OBR from "@owlbear-rodeo/sdk";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SimpleBar from "simplebar-react";
 import "simplebar-react/dist/simplebar.min.css";
 import { Header } from "./Header";
@@ -19,55 +19,91 @@ import { SettingsPanel } from "./SettingsPanel";
 import { StateSwitcher } from "./StateSwitcher";
 import { statefulVirtualLayerGroups } from "./virtualLayers";
 import { ResizeHandles } from "./ResizeHandles";
-import { clampDimension, DEFAULT_OUTLINER_LAYOUT_SETTINGS, MAX_OUTLINER_HEIGHT, readOutlinerLayoutSettings, type OutlinerDimensions, type OutlinerLayoutSettings, writeOutlinerLayoutSettings } from "./outlinerLayout";
+import { clampDimension, DEFAULT_OUTLINER_LAYOUT_SETTINGS, MAX_OUTLINER_HEIGHT, MAX_OUTLINER_WIDTH, readOutlinerLayoutSettings, type MinimizedOrientation, type OutlinerDimensions, type OutlinerLayoutSettings, writeOutlinerLayoutSettings } from "./outlinerLayout";
+import { MINIMIZED_LAYOUT_METADATA_KEY } from "./constants";
 
 export function Outliner() {
   const listRef = useRef<HTMLUListElement>(null);
   const switcherRef = useRef<HTMLDivElement>(null);
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const virtualLayersReady = useOwlbearStore((state) => state.virtualLayersReady);
+  const sceneMinimizedLayout = useOwlbearStore((state) => state.sceneMinimizedLayout);
+  const setSceneMinimizedLayout = useOwlbearStore((state) => state.setSceneMinimizedLayout);
   const hasStateGroups = useMemo(() => statefulVirtualLayerGroups(virtualLayers).length > 0, [virtualLayers]);
   const savedLayout = useMemo(() => readOutlinerLayoutSettings(), []);
   const [layout, setLayout] = useState<OutlinerLayoutSettings>(savedLayout ?? DEFAULT_OUTLINER_LAYOUT_SETTINGS);
   const layoutRef = useRef(layout);
+  const sceneLayoutRef = useRef(sceneMinimizedLayout);
+  const sceneWriteTimer = useRef<number>();
   const fullHeightInitialized = useRef(Boolean(savedLayout));
   const isMinimized = layout.mode === "minimized" && hasStateGroups;
-  const activeDimensions = layout[isMinimized ? "minimized" : "full"];
+  const isVerticalMinimized = isMinimized && layout.minimizedOrientation === "vertical";
+  const activeProfile = isMinimized ? layout.minimizedOrientation : "full";
+  const activeDimensions = activeProfile === "full" ? layout.full : sceneMinimizedLayout.dimensions[activeProfile];
 
-  const updateProfile = (mode: "full" | "minimized", dimensions: OutlinerDimensions, persist: boolean) => {
-    const next = { ...layoutRef.current, [mode]: dimensions };
+  const updateFullProfile = useCallback((dimensions: OutlinerDimensions, persist: boolean) => {
+    const next = { ...layoutRef.current, full: dimensions };
     layoutRef.current = next;
     setLayout(next);
     if (persist) writeOutlinerLayoutSettings(next);
-  };
+  }, []);
+
+  const updateMinimizedProfile = useCallback((orientation: MinimizedOrientation, dimensions: OutlinerDimensions, persist: boolean) => {
+    const next = { ...sceneLayoutRef.current, dimensions: { ...sceneLayoutRef.current.dimensions, [orientation]: dimensions } };
+    sceneLayoutRef.current = next;
+    setSceneMinimizedLayout(next);
+    if (persist) {
+      if (sceneWriteTimer.current !== undefined) window.clearTimeout(sceneWriteTimer.current);
+      sceneWriteTimer.current = window.setTimeout(() => {
+        sceneWriteTimer.current = undefined;
+        void OBR.scene.setMetadata({ [MINIMIZED_LAYOUT_METADATA_KEY]: sceneLayoutRef.current });
+      }, 150);
+    }
+  }, [setSceneMinimizedLayout]);
+
+  useEffect(() => { sceneLayoutRef.current = sceneMinimizedLayout; }, [sceneMinimizedLayout]);
 
   const setMode = (mode: "full" | "minimized") => {
     const next = { ...layoutRef.current, mode };
     layoutRef.current = next;
     setLayout(next);
     writeOutlinerLayoutSettings(next);
-    const dimensions = next[mode];
+    const dimensions = mode === "full" ? next.full : sceneLayoutRef.current.dimensions[next.minimizedOrientation];
     void OBR.action.setWidth(dimensions.width);
-    if (mode === "full") void OBR.action.setHeight(dimensions.height);
+    void OBR.action.setHeight(dimensions.height);
+  };
+
+  const setMinimizedOrientation = (minimizedOrientation: MinimizedOrientation) => {
+    const next = { ...layoutRef.current, minimizedOrientation };
+    layoutRef.current = next;
+    setLayout(next);
+    writeOutlinerLayoutSettings(next);
   };
 
   useEffect(() => {
     if (!ResizeObserver) return;
     const updateHeight = () => {
       const switcherHeight = switcherRef.current?.getBoundingClientRect().height ?? 0;
-      if (isMinimized) {
+      if (isMinimized && !isVerticalMinimized) {
         const height = clampDimension(switcherHeight, 1, MAX_OUTLINER_HEIGHT);
-        const minimized = layoutRef.current.minimized;
+        const minimized = sceneLayoutRef.current.dimensions.horizontal;
         if (height !== minimized.height) {
           void OBR.action.setHeight(height);
-          updateProfile("minimized", { ...minimized, height }, true);
+          updateMinimizedProfile("horizontal", { ...minimized, height }, true);
+        }
+      } else if (isVerticalMinimized) {
+        const vertical = sceneLayoutRef.current.dimensions.vertical;
+        const width = clampDimension(switcherRef.current?.scrollWidth ?? vertical.width, 1, MAX_OUTLINER_WIDTH);
+        if (width !== vertical.width) {
+          void OBR.action.setWidth(width);
+          updateMinimizedProfile("vertical", { ...vertical, width }, true);
         }
       } else if (!fullHeightInitialized.current) {
         const listHeight = Math.max(listRef.current?.getBoundingClientRect().height ?? 0, 64);
         const height = clampDimension(listHeight + switcherHeight + 64 + 16, 129, MAX_OUTLINER_HEIGHT);
         fullHeightInitialized.current = true;
         void OBR.action.setHeight(height);
-        updateProfile("full", { ...layoutRef.current.full, height }, true);
+        updateFullProfile({ ...layoutRef.current.full, height }, true);
       }
     };
     const resizeObserver = new ResizeObserver(updateHeight);
@@ -75,12 +111,12 @@ export function Outliner() {
     if (switcherRef.current) resizeObserver.observe(switcherRef.current);
     updateHeight();
     return () => resizeObserver.disconnect();
-  }, [isMinimized]);
+  }, [isMinimized, isVerticalMinimized, updateFullProfile, updateMinimizedProfile]);
 
   useEffect(() => {
     void OBR.action.setWidth(activeDimensions.width);
-    if (!isMinimized) void OBR.action.setHeight(activeDimensions.height);
-  }, [activeDimensions.height, activeDimensions.width, isMinimized]);
+    if (!isMinimized || isVerticalMinimized) void OBR.action.setHeight(activeDimensions.height);
+  }, [activeDimensions.height, activeDimensions.width, isMinimized, isVerticalMinimized]);
 
   useEffect(() => {
     if (virtualLayersReady && layout.mode === "minimized" && !hasStateGroups) setMode("full");
@@ -195,23 +231,27 @@ export function Outliner() {
           </Stack>
         }
       />}
-      <Box ref={switcherRef} flexShrink={0}><StateSwitcher minimized={isMinimized} onRestore={() => setMode("full")} /></Box>
+      <Box ref={switcherRef} flexShrink={0} sx={{ width: isVerticalMinimized ? "max-content" : undefined }}><StateSwitcher minimized={isMinimized} minimizedOrientation={layout.minimizedOrientation} onRestore={() => setMode("full")} /></Box>
       {!isMinimized && <SimpleBar style={{ minHeight: 0, flex: 1 }}>
         <List ref={listRef} disablePadding>
-          {settingsOpen && <SettingsPanel />}
+          {settingsOpen && <SettingsPanel minimizedOrientation={layout.minimizedOrientation} onMinimizedOrientationChange={setMinimizedOrientation} />}
           <Items search={search} />
         </List>
       </SimpleBar>}
       <ResizeHandles
         dimensions={activeDimensions}
-        heightEnabled={!isMinimized}
+        widthEnabled={!isMinimized || !isVerticalMinimized}
+        heightEnabled={!isMinimized || isVerticalMinimized}
         onResize={(dimensions) => {
-          const mode = isMinimized ? "minimized" : "full";
-          updateProfile(mode, dimensions, false);
-          void OBR.action.setWidth(dimensions.width);
-          if (!isMinimized) void OBR.action.setHeight(dimensions.height);
+          if (activeProfile === "full") updateFullProfile(dimensions, false);
+          else updateMinimizedProfile(activeProfile, dimensions, false);
+          if (!isVerticalMinimized) void OBR.action.setWidth(dimensions.width);
+          if (!isMinimized || isVerticalMinimized) void OBR.action.setHeight(dimensions.height);
         }}
-        onCommit={(dimensions) => updateProfile(isMinimized ? "minimized" : "full", dimensions, true)}
+        onCommit={(dimensions) => {
+          if (activeProfile === "full") updateFullProfile(dimensions, true);
+          else updateMinimizedProfile(activeProfile, dimensions, true);
+        }}
       />
     </Stack>
   );

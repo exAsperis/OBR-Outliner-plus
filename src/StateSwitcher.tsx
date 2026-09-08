@@ -1,5 +1,5 @@
 import { closestCenter, DndContext, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
+import { rectSortingStrategy, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -9,12 +9,15 @@ import Typography from "@mui/material/Typography";
 import HideAllStatesIcon from "@mui/icons-material/BlockRounded";
 import PreviousIcon from "@mui/icons-material/ChevronLeftRounded";
 import NextIcon from "@mui/icons-material/ChevronRightRounded";
+import PreviousVerticalIcon from "@mui/icons-material/KeyboardArrowUpRounded";
+import NextVerticalIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import RestoreIcon from "@mui/icons-material/OpenInFullRounded";
 import { useMemo, useRef, useState } from "react";
 import { isItemTransparent } from "./transparentState";
 import { useOwlbearStore } from "./useOwlbearStore";
 import { moveStatefulVirtualLayerState, setScopeProperty } from "./virtualLayerService";
 import { resolveGroupId, statefulVirtualLayerGroups, type StatefulVirtualLayerGroup } from "./virtualLayers";
+import type { MinimizedOrientation } from "./outlinerLayout";
 
 type StatefulLayer = StatefulVirtualLayerGroup["states"][number];
 
@@ -26,7 +29,7 @@ function StateButton({ group, state, active, disabled, onActivate }: { group: st
   </Button>;
 }
 
-function StateGroupRow({ group, switching, activate, hideAll, onRestore }: { group: StatefulVirtualLayerGroup; switching: boolean; activate: (state: StatefulLayer) => void; hideAll: () => void; onRestore?: () => void }) {
+function StateGroupRow({ group, switching, activate, hideAll, onRestore, orientation }: { group: StatefulVirtualLayerGroup; switching: boolean; activate: (state: StatefulLayer) => void; hideAll: () => void; onRestore?: () => void; orientation: MinimizedOrientation }) {
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const items = useOwlbearStore((state) => state.items);
   const dragging = useRef(false);
@@ -52,25 +55,26 @@ function StateGroupRow({ group, switching, activate, hideAll, onRestore }: { gro
     window.setTimeout(() => { dragging.current = false; }, 0);
   };
 
-  return <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minWidth: 0 }}>
-    <Typography variant="caption" fontWeight={700} noWrap sx={{ minWidth: 72, maxWidth: 120 }} title={group.name}>{group.name}</Typography>
+  const vertical = orientation === "vertical";
+  return <Stack direction={vertical ? "column" : "row"} alignItems={vertical ? "stretch" : "center"} spacing={0.75} sx={{ minWidth: 0, flexShrink: 0 }}>
+    <Typography variant="caption" fontWeight={700} noWrap sx={{ minWidth: vertical ? 0 : 72, maxWidth: 120, textAlign: vertical ? "center" : undefined }} title={group.name}>{group.name}</Typography>
     <Tooltip title={`Hide all ${group.name} states`}><span><IconButton size="small" color={allStatesHidden ? "info" : "default"} disabled={switching} aria-label={`Hide all ${group.name} states`} aria-pressed={allStatesHidden} onClick={hideAll}><HideAllStatesIcon fontSize="small" /></IconButton></span></Tooltip>
-    <Tooltip title={`Previous ${group.name} state`}><span><IconButton size="small" disabled={switching || group.states.length < 2} aria-label={`Previous ${group.name} state`} onClick={() => step(-1)}><PreviousIcon fontSize="small" /></IconButton></span></Tooltip>
+    <Tooltip title={`Previous ${group.name} state`}><span><IconButton size="small" disabled={switching || group.states.length < 2} aria-label={`Previous ${group.name} state`} onClick={() => step(-1)}>{vertical ? <PreviousVerticalIcon fontSize="small" /> : <PreviousIcon fontSize="small" />}</IconButton></span></Tooltip>
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => { dragging.current = true; }} onDragCancel={() => { dragging.current = false; }} onDragEnd={dragEnd}>
-      <SortableContext items={ids} strategy={rectSortingStrategy}>
-        <Stack direction="row" sx={{ minWidth: 0, flex: 1, flexWrap: "wrap", gap: 0.5, pb: 0.25 }}>
+      <SortableContext items={ids} strategy={vertical ? verticalListSortingStrategy : rectSortingStrategy}>
+        <Stack direction={vertical ? "column" : "row"} sx={{ minWidth: 0, flex: vertical ? undefined : 1, flexWrap: vertical ? "nowrap" : "wrap", gap: 0.5, pb: 0.25 }}>
           {group.states.map((state, index) => {
             return <StateButton key={state.name.toLocaleLowerCase()} group={group.name} state={state} active={activeStates[index]} disabled={switching} onActivate={() => { if (!dragging.current) activate(state); }} />;
           })}
         </Stack>
       </SortableContext>
     </DndContext>
-    <Tooltip title={`Next ${group.name} state`}><span><IconButton size="small" disabled={switching || group.states.length < 2} aria-label={`Next ${group.name} state`} onClick={() => step(1)}><NextIcon fontSize="small" /></IconButton></span></Tooltip>
+    <Tooltip title={`Next ${group.name} state`}><span><IconButton size="small" disabled={switching || group.states.length < 2} aria-label={`Next ${group.name} state`} onClick={() => step(1)}>{vertical ? <NextVerticalIcon fontSize="small" /> : <NextIcon fontSize="small" />}</IconButton></span></Tooltip>
     {onRestore && <Tooltip title="Restore Outliner"><IconButton size="small" aria-label="Restore Outliner" onClick={onRestore}><RestoreIcon fontSize="small" /></IconButton></Tooltip>}
   </Stack>;
 }
 
-export function StateSwitcher({ minimized = false, onRestore }: { minimized?: boolean; onRestore?: () => void }) {
+export function StateSwitcher({ minimized = false, minimizedOrientation = "horizontal", onRestore }: { minimized?: boolean; minimizedOrientation?: MinimizedOrientation; onRestore?: () => void }) {
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const [switching, setSwitching] = useState(false);
   const groups = useMemo(() => statefulVirtualLayerGroups(virtualLayers), [virtualLayers]);
@@ -96,7 +100,8 @@ export function StateSwitcher({ minimized = false, onRestore }: { minimized?: bo
     }
   };
 
-  return <Stack component="section" aria-label="Scene states" spacing={0.75} sx={{ px: 1, py: 0.75, flexShrink: 0, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper", maxHeight: minimized ? "none" : "35vh", overflowY: minimized ? "visible" : "auto" }}>
-    {groups.map((group, index) => <StateGroupRow key={group.name.toLocaleLowerCase()} group={group} switching={switching} activate={(state) => void activate(state)} hideAll={() => void hideAll(group)} onRestore={minimized && index === 0 ? onRestore : undefined} />)}
+  const vertical = minimized && minimizedOrientation === "vertical";
+  return <Stack component="section" aria-label="Scene states" direction={vertical ? "row" : "column"} spacing={0.75} sx={{ px: 1, py: 0.75, flexShrink: 0, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper", boxSizing: "border-box", width: vertical ? "max-content" : undefined, height: vertical ? "100vh" : undefined, maxHeight: minimized ? (vertical ? "100vh" : "none") : "35vh", overflowY: minimized ? (vertical ? "auto" : "visible") : "auto", overflowX: vertical ? "visible" : undefined, alignItems: vertical ? "flex-start" : undefined }}>
+    {groups.map((group, index) => <StateGroupRow key={group.name.toLocaleLowerCase()} group={group} switching={switching} activate={(state) => void activate(state)} hideAll={() => void hideAll(group)} onRestore={minimized && index === 0 ? onRestore : undefined} orientation={vertical ? "vertical" : "horizontal"} />)}
   </Stack>;
 }

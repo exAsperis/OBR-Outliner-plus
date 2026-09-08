@@ -1,6 +1,7 @@
 import { EXTENSION_ID } from "./constants.ts";
 
 export type OutlinerMode = "full" | "minimized";
+export type MinimizedOrientation = "horizontal" | "vertical";
 
 export interface OutlinerDimensions {
   width: number;
@@ -8,10 +9,10 @@ export interface OutlinerDimensions {
 }
 
 export interface OutlinerLayoutSettings {
-  version: 1;
+  version: 3;
   mode: OutlinerMode;
+  minimizedOrientation: MinimizedOrientation;
   full: OutlinerDimensions;
-  minimized: OutlinerDimensions;
 }
 
 export const OUTLINER_LAYOUT_SETTINGS_KEY = `${EXTENSION_ID}/layoutSettings`;
@@ -21,10 +22,10 @@ export const MIN_FULL_HEIGHT = 129;
 export const MAX_OUTLINER_HEIGHT = 800;
 
 export const DEFAULT_OUTLINER_LAYOUT_SETTINGS: OutlinerLayoutSettings = {
-  version: 1,
+  version: 3,
   mode: "full",
+  minimizedOrientation: "horizontal",
   full: { width: 375, height: 129 },
-  minimized: { width: 375, height: 129 },
 };
 
 export function clampDimension(value: number, minimum: number, maximum: number) {
@@ -52,12 +53,24 @@ function dimensions(value: unknown, minimumHeight: number): OutlinerDimensions |
 }
 
 export function parseOutlinerLayoutSettings(value: unknown): OutlinerLayoutSettings | undefined {
-  if (!value || typeof value !== "object" || (value as { version?: unknown }).version !== 1) return;
+  if (!value || typeof value !== "object") return;
+  const version = (value as { version?: unknown }).version;
   const mode = (value as { mode?: unknown }).mode;
   const full = dimensions((value as { full?: unknown }).full, MIN_FULL_HEIGHT);
-  const minimized = dimensions((value as { minimized?: unknown }).minimized, 1);
-  if ((mode !== "full" && mode !== "minimized") || !full || !minimized) return;
-  return { version: 1, mode, full, minimized };
+  if ((mode !== "full" && mode !== "minimized") || !full) return;
+  if (version === 1) {
+    if (!dimensions((value as { minimized?: unknown }).minimized, 1)) return;
+    return { version: 3, mode, minimizedOrientation: "horizontal", full };
+  }
+  if (version === 2) {
+    const orientation = (value as { minimizedOrientation?: unknown }).minimizedOrientation;
+    if (orientation !== "horizontal" && orientation !== "vertical") return;
+    return { version: 3, mode, minimizedOrientation: orientation, full };
+  }
+  if (version !== 3) return;
+  const orientation = (value as { minimizedOrientation?: unknown }).minimizedOrientation;
+  if (orientation !== "horizontal" && orientation !== "vertical") return;
+  return { version: 3, mode, minimizedOrientation: orientation, full };
 }
 
 export function readOutlinerLayoutSettings(storage: Pick<Storage, "getItem"> = window.localStorage) {

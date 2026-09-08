@@ -2,8 +2,9 @@ import Box from "@mui/material/Box";
 import { useEffect, useRef, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { resizedDimensions, type OutlinerDimensions, type ResizeAxis } from "./outlinerLayout";
 
-export function ResizeHandles({ dimensions, heightEnabled, onResize, onCommit }: {
+export function ResizeHandles({ dimensions, widthEnabled, heightEnabled, onResize, onCommit }: {
   dimensions: OutlinerDimensions;
+  widthEnabled: boolean;
   heightEnabled: boolean;
   onResize: (dimensions: OutlinerDimensions) => void;
   onCommit: (dimensions: OutlinerDimensions) => void;
@@ -67,8 +68,8 @@ export function ResizeHandles({ dimensions, heightEnabled, onResize, onCommit }:
   />;
 
   return <>
-    {handle("width", "Resize Outliner width", { top: 0, right: 0, bottom: 0, width: 6, cursor: "ew-resize" })}
+    {widthEnabled && handle("width", "Resize Outliner width", { top: 0, right: 0, bottom: 0, width: 6, cursor: "ew-resize" })}
     {heightEnabled && handle("height", "Resize Outliner height", { left: 0, right: 0, bottom: 0, height: 6, cursor: "ns-resize" })}
-    {heightEnabled && handle("both", "Resize Outliner width and height", { right: 0, bottom: 0, width: 14, height: 14, cursor: "nwse-resize" })}
+    {widthEnabled && heightEnabled && handle("both", "Resize Outliner width and height", { right: 0, bottom: 0, width: 14, height: 14, cursor: "nwse-resize" })}
   </>;
 }

@@ -1,16 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_OUTLINER_LAYOUT_SETTINGS, MAX_OUTLINER_HEIGHT, MAX_OUTLINER_WIDTH, MIN_FULL_HEIGHT, MIN_OUTLINER_WIDTH, OUTLINER_LAYOUT_SETTINGS_KEY, parseOutlinerLayoutSettings, readOutlinerLayoutSettings, resizedDimensions } from "../src/outlinerLayout.ts";
+import { DEFAULT_OUTLINER_LAYOUT_SETTINGS, MAX_OUTLINER_HEIGHT, MIN_FULL_HEIGHT, MIN_OUTLINER_WIDTH, OUTLINER_LAYOUT_SETTINGS_KEY, parseOutlinerLayoutSettings, readOutlinerLayoutSettings, resizedDimensions } from "../src/outlinerLayout.ts";
 
-test("parses independent full and minimized layout profiles", () => {
+test("migrates version-1 layouts to horizontal minimized mode", () => {
   const parsed = parseOutlinerLayoutSettings({ version: 1, mode: "minimized", full: { width: 500, height: 600 }, minimized: { width: 320, height: 75 } });
-  assert.deepEqual(parsed, { version: 1, mode: "minimized", full: { width: 500, height: 600 }, minimized: { width: 320, height: 75 } });
+  assert.deepEqual(parsed, { version: 3, mode: "minimized", minimizedOrientation: "horizontal", full: { width: 500, height: 600 } });
+});
+
+test("migrates version-2 orientation while moving minimized profiles to scene metadata", () => {
+  const value = { version: 2, mode: "minimized", minimizedOrientation: "vertical", full: { width: 500, height: 600 }, minimized: {
+    horizontal: { width: 420, height: 80 },
+    vertical: { width: 510, height: 375 },
+  } };
+  assert.deepEqual(parseOutlinerLayoutSettings(value), { version: 3, mode: "minimized", minimizedOrientation: "vertical", full: { width: 500, height: 600 } });
 });
 
 test("clamps persisted layout dimensions", () => {
-  const parsed = parseOutlinerLayoutSettings({ version: 1, mode: "full", full: { width: 1, height: 1 }, minimized: { width: 9000, height: 9000 } });
+  const parsed = parseOutlinerLayoutSettings({ version: 3, mode: "full", minimizedOrientation: "vertical", full: { width: 1, height: 1 } });
   assert.deepEqual(parsed?.full, { width: MIN_OUTLINER_WIDTH, height: MIN_FULL_HEIGHT });
-  assert.deepEqual(parsed?.minimized, { width: MAX_OUTLINER_WIDTH, height: MAX_OUTLINER_HEIGHT });
 });
 
 test("rejects malformed layout settings and handles unavailable storage", () => {

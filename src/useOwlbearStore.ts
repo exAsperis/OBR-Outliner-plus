@@ -9,13 +9,14 @@ interface OwlbearState {
   selection: Player["selection"];
   permissions: Permission[];
   virtualLayers: VirtualLayerState;
+  virtualLayersReady: boolean;
 
   setSceneReady: (ready: boolean) => void;
   setItems: (items: Item[]) => void;
   setRole: (role: Player["role"]) => void;
   setSelection: (selection: Player["selection"]) => void;
   setPermissions: (permissions: Permission[]) => void;
-  setVirtualLayers: (virtualLayers: VirtualLayerState) => void;
+  setVirtualLayers: (virtualLayers: VirtualLayerState, ready?: boolean) => void;
 }
 
 export const useOwlbearStore = create<OwlbearState>()((set) => ({
@@ -25,11 +26,12 @@ export const useOwlbearStore = create<OwlbearState>()((set) => ({
   selection: undefined,
   permissions: [],
   virtualLayers: EMPTY_VIRTUAL_LAYER_STATE,
+  virtualLayersReady: false,
 
   setSceneReady: (sceneReady) => set((state) => ({ ...state, sceneReady })),
   setItems: (items) => set((state) => ({ ...state, items })),
   setRole: (role) => set((state) => ({ ...state, role })),
   setSelection: (selection) => set((state) => ({ ...state, selection })),
   setPermissions: (permissions) => set((state) => ({ ...state, permissions })),
-  setVirtualLayers: (virtualLayers) => set((state) => ({ ...state, virtualLayers })),
+  setVirtualLayers: (virtualLayers, virtualLayersReady = true) => set((state) => ({ ...state, virtualLayers, virtualLayersReady })),
 }));

@@ -51,7 +51,7 @@ export function useOwlbearStoreSync() {
 
   const setVirtualLayers = useOwlbearStore((state) => state.setVirtualLayers);
   useEffect(() => {
-    if (!isGameMaster || !sceneReady) { setVirtualLayers(EMPTY_VIRTUAL_LAYER_STATE); return; }
+    if (!isGameMaster || !sceneReady) { setVirtualLayers(EMPTY_VIRTUAL_LAYER_STATE, false); return; }
     OBR.scene.getMetadata().then((metadata) => setVirtualLayers(stateFromMetadata(metadata)));
     return OBR.scene.onMetadataChange((metadata) => setVirtualLayers(stateFromMetadata(metadata)));
   }, [isGameMaster, sceneReady, setVirtualLayers]);

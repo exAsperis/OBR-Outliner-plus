@@ -9,6 +9,7 @@ import Typography from "@mui/material/Typography";
 import HideAllStatesIcon from "@mui/icons-material/BlockRounded";
 import PreviousIcon from "@mui/icons-material/ChevronLeftRounded";
 import NextIcon from "@mui/icons-material/ChevronRightRounded";
+import RestoreIcon from "@mui/icons-material/OpenInFullRounded";
 import { useMemo, useRef, useState } from "react";
 import { isItemTransparent } from "./transparentState";
 import { useOwlbearStore } from "./useOwlbearStore";
@@ -25,7 +26,7 @@ function StateButton({ group, state, active, disabled, onActivate }: { group: st
   </Button>;
 }
 
-function StateGroupRow({ group, switching, activate, hideAll }: { group: StatefulVirtualLayerGroup; switching: boolean; activate: (state: StatefulLayer) => void; hideAll: () => void }) {
+function StateGroupRow({ group, switching, activate, hideAll, onRestore }: { group: StatefulVirtualLayerGroup; switching: boolean; activate: (state: StatefulLayer) => void; hideAll: () => void; onRestore?: () => void }) {
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const items = useOwlbearStore((state) => state.items);
   const dragging = useRef(false);
@@ -65,10 +66,11 @@ function StateGroupRow({ group, switching, activate, hideAll }: { group: Statefu
       </SortableContext>
     </DndContext>
     <Tooltip title={`Next ${group.name} state`}><span><IconButton size="small" disabled={switching || group.states.length < 2} aria-label={`Next ${group.name} state`} onClick={() => step(1)}><NextIcon fontSize="small" /></IconButton></span></Tooltip>
+    {onRestore && <Tooltip title="Restore Outliner"><IconButton size="small" aria-label="Restore Outliner" onClick={onRestore}><RestoreIcon fontSize="small" /></IconButton></Tooltip>}
   </Stack>;
 }
 
-export function StateSwitcher() {
+export function StateSwitcher({ minimized = false, onRestore }: { minimized?: boolean; onRestore?: () => void }) {
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const [switching, setSwitching] = useState(false);
   const groups = useMemo(() => statefulVirtualLayerGroups(virtualLayers), [virtualLayers]);
@@ -94,7 +96,7 @@ export function StateSwitcher() {
     }
   };
 
-  return <Stack component="section" aria-label="Scene states" spacing={0.75} sx={{ px: 1, py: 0.75, flexShrink: 0, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper", maxHeight: "35vh", overflowY: "auto" }}>
-    {groups.map((group) => <StateGroupRow key={group.name.toLocaleLowerCase()} group={group} switching={switching} activate={(state) => void activate(state)} hideAll={() => void hideAll(group)} />)}
+  return <Stack component="section" aria-label="Scene states" spacing={0.75} sx={{ px: 1, py: 0.75, flexShrink: 0, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper", maxHeight: minimized ? "none" : "35vh", overflowY: minimized ? "visible" : "auto" }}>
+    {groups.map((group, index) => <StateGroupRow key={group.name.toLocaleLowerCase()} group={group} switching={switching} activate={(state) => void activate(state)} hideAll={() => void hideAll(group)} onRestore={minimized && index === 0 ? onRestore : undefined} />)}
   </Stack>;
 }

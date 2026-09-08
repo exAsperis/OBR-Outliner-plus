@@ -5,7 +5,6 @@ import Tooltip from "@mui/material/Tooltip";
 import Box from "@mui/material/Box";
 import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
 import SettingsIcon from "@mui/icons-material/SettingsRounded";
-import MinimizeIcon from "@mui/icons-material/CloseFullscreenRounded";
 import OBR from "@owlbear-rodeo/sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SimpleBar from "simplebar-react";
@@ -191,15 +190,6 @@ export function Outliner() {
         title={searchExpanded ? "" : "Outliner+"}
         action={
           <Stack direction="row" alignItems="center">
-            <Tooltip title="Minimize to scene states" disableInteractive>
-              <span><IconButton
-                aria-label="Minimize to scene states"
-                disabled={!hasStateGroups}
-                onClick={() => setMode("minimized")}
-              >
-                <MinimizeIcon />
-              </IconButton></span>
-            </Tooltip>
             <SearchField
               value={search}
               onChange={setSearch}
@@ -231,10 +221,10 @@ export function Outliner() {
           </Stack>
         }
       />}
-      <Box ref={switcherRef} flexShrink={0} sx={{ width: isVerticalMinimized ? "max-content" : undefined }}><StateSwitcher minimized={isMinimized} minimizedOrientation={layout.minimizedOrientation} onRestore={() => setMode("full")} /></Box>
+      <Box ref={switcherRef} flexShrink={0} sx={{ width: isVerticalMinimized ? "max-content" : undefined }}><StateSwitcher minimized={isMinimized} minimizedOrientation={layout.minimizedOrientation} onModeToggle={() => setMode(isMinimized ? "full" : "minimized")} onOrientationToggle={() => setMinimizedOrientation(layout.minimizedOrientation === "horizontal" ? "vertical" : "horizontal")} /></Box>
       {!isMinimized && <SimpleBar style={{ minHeight: 0, flex: 1 }}>
         <List ref={listRef} disablePadding>
-          {settingsOpen && <SettingsPanel minimizedOrientation={layout.minimizedOrientation} onMinimizedOrientationChange={setMinimizedOrientation} />}
+          {settingsOpen && <SettingsPanel />}
           <Items search={search} />
         </List>
       </SimpleBar>}

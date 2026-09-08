@@ -5,13 +5,10 @@ import Switch from "@mui/material/Switch";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
-import ToggleButton from "@mui/material/ToggleButton";
-import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import { formatLayerName, OUTLINER_LAYERS_TOP_TO_BOTTOM } from "./layers";
 import { setFeatureEnabled, setLayerEnabled, useLayerDisplaySettings, type FeatureSetting } from "./layerSettings";
 import { LayerIcon } from "./LayerIcon";
 import { useOwlbearStore } from "./useOwlbearStore";
-import type { MinimizedOrientation } from "./outlinerLayout";
 
 const FEATURES: Array<{ feature: FeatureSetting; label: string }> = [
   { feature: "manageInheritance", label: "Manage inheritance" },
@@ -21,26 +18,12 @@ const FEATURES: Array<{ feature: FeatureSetting; label: string }> = [
   { feature: "visible", label: "Visible/Hidden" },
 ];
 
-export function SettingsPanel({ minimizedOrientation, onMinimizedOrientationChange }: { minimizedOrientation: MinimizedOrientation; onMinimizedOrientationChange: (orientation: MinimizedOrientation) => void }) {
+export function SettingsPanel() {
   const settings = useLayerDisplaySettings();
   const items = useOwlbearStore((state) => state.items);
   const enabled = new Set(settings.enabledLayers);
   return <Box component="li" sx={{ listStyle: "none" }}>
     <Box id="outliner-settings" component="section" aria-labelledby="features-heading" sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" }}>
-      <Typography id="minified-layout-heading" variant="subtitle2" sx={{ mb: 0.75 }}>Minified layout</Typography>
-      <ToggleButtonGroup
-        exclusive
-        size="small"
-        fullWidth
-        value={minimizedOrientation}
-        aria-labelledby="minified-layout-heading"
-        onChange={(_, orientation: MinimizedOrientation | null) => { if (orientation) onMinimizedOrientationChange(orientation); }}
-        sx={{ mb: 1.5 }}
-      >
-        <ToggleButton value="horizontal">Horizontal</ToggleButton>
-        <ToggleButton value="vertical">Vertical</ToggleButton>
-      </ToggleButtonGroup>
-      <Divider sx={{ mx: -2, mb: 1.5 }} />
       <Typography id="features-heading" variant="subtitle2" sx={{ mb: 0.5 }}>Features</Typography>
       <FormGroup sx={{ mb: 1 }}>
         <FeatureToggle feature={FEATURES[0].feature} label={FEATURES[0].label} checked={settings.features.manageInheritance} />

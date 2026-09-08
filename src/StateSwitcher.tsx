@@ -6,12 +6,14 @@ import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import SvgIcon from "@mui/material/SvgIcon";
 import HideAllStatesIcon from "@mui/icons-material/BlockRounded";
 import PreviousIcon from "@mui/icons-material/ChevronLeftRounded";
 import NextIcon from "@mui/icons-material/ChevronRightRounded";
 import PreviousVerticalIcon from "@mui/icons-material/KeyboardArrowUpRounded";
 import NextVerticalIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import RestoreIcon from "@mui/icons-material/OpenInFullRounded";
+import MinimizeIcon from "@mui/icons-material/CloseFullscreenRounded";
 import { useMemo, useRef, useState } from "react";
 import { isItemTransparent } from "./transparentState";
 import { useOwlbearStore } from "./useOwlbearStore";
@@ -29,7 +31,7 @@ function StateButton({ group, state, active, disabled, onActivate }: { group: st
   </Button>;
 }
 
-function StateGroupRow({ group, switching, activate, hideAll, onRestore, orientation }: { group: StatefulVirtualLayerGroup; switching: boolean; activate: (state: StatefulLayer) => void; hideAll: () => void; onRestore?: () => void; orientation: MinimizedOrientation }) {
+function StateGroupRow({ group, switching, activate, hideAll, orientation }: { group: StatefulVirtualLayerGroup; switching: boolean; activate: (state: StatefulLayer) => void; hideAll: () => void; orientation: MinimizedOrientation }) {
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const items = useOwlbearStore((state) => state.items);
   const dragging = useRef(false);
@@ -70,11 +72,16 @@ function StateGroupRow({ group, switching, activate, hideAll, onRestore, orienta
       </SortableContext>
     </DndContext>
     <Tooltip title={`Next ${group.name} state`}><span><IconButton size="small" disabled={switching || group.states.length < 2} aria-label={`Next ${group.name} state`} onClick={() => step(1)}>{vertical ? <NextVerticalIcon fontSize="small" /> : <NextIcon fontSize="small" />}</IconButton></span></Tooltip>
-    {onRestore && <Tooltip title="Restore Outliner"><IconButton size="small" aria-label="Restore Outliner" onClick={onRestore}><RestoreIcon fontSize="small" /></IconButton></Tooltip>}
   </Stack>;
 }
 
-export function StateSwitcher({ minimized = false, minimizedOrientation = "horizontal", onRestore }: { minimized?: boolean; minimizedOrientation?: MinimizedOrientation; onRestore?: () => void }) {
+function LayoutOrientationIcon() {
+  return <SvgIcon fontSize="small" viewBox="0 0 24 24">
+    <path d="M5 4v15m0 0-3-3m3 3 3-3M5 5h14m0 0-3-3m3 3-3 3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </SvgIcon>;
+}
+
+export function StateSwitcher({ minimized = false, minimizedOrientation = "horizontal", onModeToggle, onOrientationToggle }: { minimized?: boolean; minimizedOrientation?: MinimizedOrientation; onModeToggle: () => void; onOrientationToggle: () => void }) {
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const [switching, setSwitching] = useState(false);
   const groups = useMemo(() => statefulVirtualLayerGroups(virtualLayers), [virtualLayers]);
@@ -101,7 +108,13 @@ export function StateSwitcher({ minimized = false, minimizedOrientation = "horiz
   };
 
   const vertical = minimized && minimizedOrientation === "vertical";
-  return <Stack component="section" aria-label="Scene states" direction={vertical ? "row" : "column"} spacing={0.75} sx={{ px: 1, py: 0.75, flexShrink: 0, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper", boxSizing: "border-box", width: vertical ? "max-content" : undefined, height: vertical ? "100vh" : undefined, maxHeight: minimized ? (vertical ? "100vh" : "none") : "35vh", overflowY: minimized ? (vertical ? "auto" : "visible") : "auto", overflowX: vertical ? "visible" : undefined, alignItems: vertical ? "flex-start" : undefined }}>
-    {groups.map((group, index) => <StateGroupRow key={group.name.toLocaleLowerCase()} group={group} switching={switching} activate={(state) => void activate(state)} hideAll={() => void hideAll(group)} onRestore={minimized && index === 0 ? onRestore : undefined} orientation={vertical ? "vertical" : "horizontal"} />)}
+  return <Stack component="section" aria-label="Scene states" spacing={0.75} sx={{ px: 1, py: 0.75, flexShrink: 0, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper", boxSizing: "border-box", width: vertical ? "max-content" : undefined, height: vertical ? "100vh" : undefined, maxHeight: minimized ? (vertical ? "100vh" : "none") : "35vh", overflowY: minimized ? (vertical ? "auto" : "visible") : "auto", overflowX: vertical ? "visible" : undefined }}>
+    <Stack direction="row" justifyContent="flex-end" alignItems="center" flexWrap="wrap" sx={{ width: "100%" }}>
+      {minimized && <Tooltip title={`Use ${minimizedOrientation === "horizontal" ? "vertical" : "horizontal"} minified layout`}><IconButton size="small" aria-label={`Use ${minimizedOrientation === "horizontal" ? "vertical" : "horizontal"} minified layout`} onClick={onOrientationToggle}><LayoutOrientationIcon /></IconButton></Tooltip>}
+      <Tooltip title={minimized ? "Restore Outliner" : "Minimize to scene states"}><IconButton size="small" aria-label={minimized ? "Restore Outliner" : "Minimize to scene states"} onClick={onModeToggle}>{minimized ? <RestoreIcon fontSize="small" /> : <MinimizeIcon fontSize="small" />}</IconButton></Tooltip>
+    </Stack>
+    <Stack direction={vertical ? "row" : "column"} spacing={0.75} alignItems={vertical ? "flex-start" : undefined}>
+      {groups.map((group) => <StateGroupRow key={group.name.toLocaleLowerCase()} group={group} switching={switching} activate={(state) => void activate(state)} hideAll={() => void hideAll(group)} orientation={vertical ? "vertical" : "horizontal"} />)}
+    </Stack>
   </Stack>;
 }

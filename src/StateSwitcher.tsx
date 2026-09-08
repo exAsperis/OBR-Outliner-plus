@@ -56,13 +56,13 @@ function StateGroupRow({ group, switching, activate, hideAll, onRestore, orienta
   };
 
   const vertical = orientation === "vertical";
-  return <Stack direction={vertical ? "column" : "row"} alignItems={vertical ? "stretch" : "center"} spacing={0.75} sx={{ minWidth: 0, flexShrink: 0 }}>
+  return <Stack direction={vertical ? "column" : "row"} alignItems="center" spacing={0.75} sx={{ minWidth: 0, flexShrink: 0 }}>
     <Typography variant="caption" fontWeight={700} noWrap sx={{ minWidth: vertical ? 0 : 72, maxWidth: 120, textAlign: vertical ? "center" : undefined }} title={group.name}>{group.name}</Typography>
     <Tooltip title={`Hide all ${group.name} states`}><span><IconButton size="small" color={allStatesHidden ? "info" : "default"} disabled={switching} aria-label={`Hide all ${group.name} states`} aria-pressed={allStatesHidden} onClick={hideAll}><HideAllStatesIcon fontSize="small" /></IconButton></span></Tooltip>
     <Tooltip title={`Previous ${group.name} state`}><span><IconButton size="small" disabled={switching || group.states.length < 2} aria-label={`Previous ${group.name} state`} onClick={() => step(-1)}>{vertical ? <PreviousVerticalIcon fontSize="small" /> : <PreviousIcon fontSize="small" />}</IconButton></span></Tooltip>
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => { dragging.current = true; }} onDragCancel={() => { dragging.current = false; }} onDragEnd={dragEnd}>
       <SortableContext items={ids} strategy={vertical ? verticalListSortingStrategy : rectSortingStrategy}>
-        <Stack direction={vertical ? "column" : "row"} sx={{ minWidth: 0, flex: vertical ? undefined : 1, flexWrap: vertical ? "nowrap" : "wrap", gap: 0.5, pb: 0.25 }}>
+        <Stack direction={vertical ? "column" : "row"} alignItems={vertical ? "center" : undefined} sx={{ minWidth: 0, flex: vertical ? undefined : 1, flexWrap: vertical ? "nowrap" : "wrap", gap: 0.5, pb: 0.25 }}>
           {group.states.map((state, index) => {
             return <StateButton key={state.name.toLocaleLowerCase()} group={group.name} state={state} active={activeStates[index]} disabled={switching} onActivate={() => { if (!dragging.current) activate(state); }} />;
           })}

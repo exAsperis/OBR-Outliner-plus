@@ -120,7 +120,7 @@ export function Outliner() {
                 aria-controls={settingsOpen ? "outliner-settings" : undefined}
                 onClick={() => setSettingsOpen((open) => !open)}
               >
-                <SettingsIcon />
+                <SettingsIcon sx={{ color: settingsOpen ? "primary.main" : undefined }} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Help" disableInteractive>

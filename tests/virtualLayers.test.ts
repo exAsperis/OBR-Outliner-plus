@@ -46,7 +46,7 @@ function groupIds(items: VirtualLayerItem[], group: string) {
 test("creates, renames, deletes, and reorders layer definitions", () => {
   const created = createVirtualLayer(state, "DRAWING", " Notes ", "notes");
   assert.equal(created.layers.at(-1)?.name, "Notes");
-  assert.equal(renameVirtualLayer(created, "notes", "GM Notes").layers.at(-1)?.name, "GM Notes");
+  assert.equal(renameVirtualLayer(created, "notes", " GM :Notes / Private ").layers.at(-1)?.name, "GM: Notes/Private");
   assert.deepEqual(reorderVirtualLayer(state, "walls", 0).layers.filter((entry) => entry.obrLayer === "PROP").sort((a, b) => a.order - b.order).map((entry) => entry.id), ["walls", "roofs"]);
   assert.deepEqual(deleteVirtualLayer(state, "roofs").layers.filter((entry) => entry.obrLayer === "PROP").map((entry) => [entry.id, entry.order]), [["walls", 0]]);
 });
@@ -60,6 +60,13 @@ test("allows duplicate trimmed case-insensitive names and derives links scene-wi
   assert.deepEqual(linkedVirtualLayers(renamed, "roofs").map((layer) => layer.id), ["roofs", "pcs", "duplicate"]);
   assert.equal(isLinkedVirtualLayer(renameVirtualLayer(renamed, "pcs", "Heroes"), "pcs"), false);
   assert.throws(() => createVirtualLayer(state, "PROP", " ", "empty"), /empty/);
+});
+
+test("canonical whitespace variants link by their full semantic path", () => {
+  let linked = createVirtualLayer(state, "DRAWING", " House :floor 1 / Lights : on ", "drawing-lights");
+  linked = createVirtualLayer(linked, "MAP", "house: floor 1/lights:on", "map-lights");
+  assert.equal(linked.layers.find((layer) => layer.id === "drawing-lights")?.name, "House: floor 1/Lights: on");
+  assert.deepEqual(linkedVirtualLayers(linked, "drawing-lights").map((layer) => layer.id), ["drawing-lights", "map-lights"]);
 });
 
 test("parses stateful virtual-layer names and groups their mutually exclusive states", () => {

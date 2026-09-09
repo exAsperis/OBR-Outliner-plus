@@ -1,5 +1,6 @@
 import type { Item } from "@owlbear-rodeo/sdk";
 import type { StackOperation } from "./stacking";
+import { canonicalizeVirtualLayerName, canonicalVirtualLayerIdentity, parseVirtualLayerPath } from "./virtualLayerName.ts";
 const VIRTUAL_LAYERS_METADATA_KEY = "com.ex-asperis.outliner/virtualLayers";
 const VIRTUAL_LAYER_METADATA_KEY = "com.ex-asperis.outliner/virtualLayer";
 
@@ -106,7 +107,9 @@ export function parseVirtualLayerState(value: unknown): VirtualLayerState {
     const candidate = entry as Partial<VirtualLayerDefinition>;
     if (typeof candidate.id !== "string" || !candidate.id || typeof candidate.name !== "string" || !candidate.name.trim() ||
         !isLayer(candidate.obrLayer) || typeof candidate.order !== "number" || !Number.isFinite(candidate.order)) return [];
-    return [{ id: candidate.id, name: candidate.name.trim(), obrLayer: candidate.obrLayer, order: candidate.order }];
+    let name: string;
+    try { name = canonicalizeVirtualLayerName(candidate.name); } catch { return []; }
+    return [{ id: candidate.id, name, obrLayer: candidate.obrLayer, order: candidate.order }];
   });
   const rawOrders = (value as { unassignedOrders?: unknown }).unassignedOrders;
   const unassignedOrders: Partial<Record<Item["layer"], number>> = {};
@@ -130,7 +133,7 @@ export function stateFromMetadata(metadata: Record<string, unknown>) {
   return parseVirtualLayerState(metadata[VIRTUAL_LAYERS_METADATA_KEY]);
 }
 
-export const normalizedVirtualLayerName = (name: string) => name.trim().toLocaleLowerCase();
+export const normalizedVirtualLayerName = (name: string) => canonicalVirtualLayerIdentity(name) ?? name.trim().toLocaleLowerCase();
 
 export function linkedVirtualLayers(state: VirtualLayerState, id: string) {
   const target = state.layers.find((layer) => layer.id === id);
@@ -154,11 +157,9 @@ export interface StatefulVirtualLayerGroup {
 }
 
 export function parseStatefulVirtualLayerName(name: string): StatefulVirtualLayerName | undefined {
-  const separator = name.indexOf(":");
-  if (separator < 0) return undefined;
-  const group = name.slice(0, separator).trim();
-  const state = name.slice(separator + 1).trim();
-  return group && state ? { group, state } : undefined;
+  const path = parseVirtualLayerPath(name);
+  if (!path || path.segments.length !== 1 || path.segments[0].kind !== "state") return undefined;
+  return { group: path.segments[0].group, state: path.segments[0].state };
 }
 
 export function statefulVirtualLayerGroups(state: VirtualLayerState): StatefulVirtualLayerGroup[] {
@@ -220,9 +221,7 @@ export function mutuallyExclusiveVirtualLayers(state: VirtualLayerState, id: str
 }
 
 function validateName(name: string) {
-  const trimmed = name.trim();
-  if (!trimmed) throw new Error("Virtual layer name cannot be empty.");
-  return trimmed;
+  return canonicalizeVirtualLayerName(name);
 }
 
 function orderedForLayer(state: VirtualLayerState, obrLayer: Item["layer"]) {

@@ -105,6 +105,9 @@ test("calculates only changes for instructed properties", () => {
   assert.equal(updates.has("independent"), false);
   passThrough.locked = true;
   passThrough.visible = false;
+  passThrough.metadata["com.ex-asperis.outliner/localState"] = {
+    version: 1, values: { locked: false, visible: true },
+  };
   assert.equal(calculateInheritanceUpdates([passThrough], state).size, 0);
 });
 
@@ -122,11 +125,36 @@ test("plans inherited transparency activation and restoration", () => {
   target.metadata["com.ex-asperis.outliner/transparentState"] = {
     scale: { x: 1, y: 1 }, source: "inherited", visible: true, disableHit: false,
   };
+  target.metadata["com.ex-asperis.outliner/localState"] = { version: 1, values: { transparent: false } };
   target.scale = { x: 0, y: 0 };
   target.visible = false;
   assert.equal(calculateInheritanceUpdates([target], state).size, 0);
   const withoutRule: VirtualLayerState = { version: 2, layers: state.layers };
   assert.deepEqual(calculateInheritanceUpdates([target], withoutRule).get("target"), { instructions: {} });
+});
+
+test("state selection is a structural transparency override, not item visibility", () => {
+  const selected = item("day", "day");
+  const inactive = item("night", "night");
+  const stateful: VirtualLayerState = {
+    version: 2,
+    layers: [
+      { id: "day", name: "Manor: Day", obrLayer: "PROP", order: 0 },
+      { id: "night", name: "Manor: Night", obrLayer: "PROP", order: 1 },
+    ],
+    stateSelections: { manor: "day" },
+  };
+  assert.deepEqual(getEffectiveItemRule(selected, stateful), {});
+  assert.deepEqual(getEffectiveItemRule(inactive, stateful), { transparent: true });
+  assert.equal(selected.visible, true);
+  assert.equal(inactive.visible, true);
+  stateful.inheritance = { virtual: { night: { mode: "independent", enforce: { transparent: false } } } };
+  assert.deepEqual(getEffectiveItemRule(inactive, stateful), { transparent: true });
+  stateful.inheritance.virtual!.night = { mode: "independent", enforce: { transparent: true } };
+  stateful.stateSelections = { manor: "night" };
+  assert.deepEqual(getEffectiveItemRule(inactive, stateful), { transparent: true });
+  delete stateful.inheritance;
+  assert.deepEqual(getEffectiveItemRule(inactive, stateful), {});
 });
 
 test("allows visibility and click-through instructions to compose with transparency", () => {

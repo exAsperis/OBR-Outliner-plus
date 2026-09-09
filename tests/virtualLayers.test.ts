@@ -14,6 +14,7 @@ import {
   linkedVirtualLayers,
   mutuallyExclusiveVirtualLayers,
   parseStatefulVirtualLayerName,
+  getStateSelection,
   statefulVirtualLayerGroups,
   reorderStatefulVirtualLayerState,
   parseVirtualLayerState,
@@ -23,6 +24,7 @@ import {
   reorderStackingGroup,
   stackGroup,
   resolveGroupId,
+  withStateSelection,
   type VirtualLayerItem,
   type VirtualLayerState,
 } from "../src/virtualLayers.ts";
@@ -101,6 +103,10 @@ test("parses stateful virtual-layer names and groups their mutually exclusive st
   const reordered = reorderStatefulVirtualLayerState(stateful, " CASTLE ", "basement", "Ground");
   assert.deepEqual(statefulVirtualLayerGroups(reordered)[0].states.map((entry) => entry.name), ["basement", "Ground", "First Floor"]);
   assert.deepEqual(parseVirtualLayerState(reordered).stateOrders, { castle: ["basement", "ground", "first floor"] });
+  const selected = withStateSelection(stateful, " CASTLE ", " First Floor ");
+  assert.equal(getStateSelection(selected, "castle"), "first floor");
+  assert.deepEqual(parseVirtualLayerState(selected).stateSelections, { castle: "first floor" });
+  assert.equal(getStateSelection(withStateSelection(selected, "Castle", null), "castle"), null);
 });
 
 test("parses valid definitions and ignores malformed entries", () => {

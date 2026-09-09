@@ -33,6 +33,8 @@ export interface VirtualLayerState {
   layers: VirtualLayerDefinition[];
   unassignedOrders?: Partial<Record<Item["layer"], number>>;
   stateOrders?: Record<string, string[]>;
+  /** Normalized state name, or null when every state in the group is suppressed. */
+  stateSelections?: Record<string, string | null>;
   inheritance?: StateInheritanceRules;
 }
 
@@ -125,8 +127,17 @@ export function parseVirtualLayerState(value: unknown): VirtualLayerState {
       if (states.length) stateOrders[group] = states;
     }
   }
+  const rawStateSelections = (value as { stateSelections?: unknown }).stateSelections;
+  const stateSelections: Record<string, string | null> = {};
+  if (rawStateSelections && typeof rawStateSelections === "object") for (const [group, selection] of Object.entries(rawStateSelections)) {
+    const groupKey = group.trim().toLocaleLowerCase();
+    if (groupKey && (selection === null || (typeof selection === "string" && selection.trim()))) {
+      stateSelections[groupKey] = typeof selection === "string" ? selection.trim().toLocaleLowerCase() : null;
+    }
+  }
   return { version: 2, layers, ...(Object.keys(unassignedOrders).length ? { unassignedOrders } : {}),
-    ...(Object.keys(stateOrders).length ? { stateOrders } : {}), ...(inheritance ? { inheritance } : {}) };
+    ...(Object.keys(stateOrders).length ? { stateOrders } : {}),
+    ...(Object.keys(stateSelections).length ? { stateSelections } : {}), ...(inheritance ? { inheritance } : {}) };
 }
 
 export function stateFromMetadata(metadata: Record<string, unknown>) {
@@ -218,6 +229,21 @@ export function mutuallyExclusiveVirtualLayers(state: VirtualLayerState, id: str
     const candidate = parseStatefulVirtualLayerName(layer.name);
     return candidate && candidate.group.toLocaleLowerCase() === normalizedGroup && candidate.state.toLocaleLowerCase() !== normalizedState;
   });
+}
+
+export function getStateSelection(state: VirtualLayerState, groupName: string) {
+  const key = groupName.trim().toLocaleLowerCase();
+  return Object.prototype.hasOwnProperty.call(state.stateSelections ?? {}, key)
+    ? state.stateSelections?.[key] : undefined;
+}
+
+export function withStateSelection(state: VirtualLayerState, groupName: string, stateName: string | null): VirtualLayerState {
+  const groupKey = groupName.trim().toLocaleLowerCase();
+  if (!groupKey) return state;
+  return { ...state, stateSelections: {
+    ...state.stateSelections,
+    [groupKey]: stateName === null ? null : stateName.trim().toLocaleLowerCase(),
+  } };
 }
 
 function validateName(name: string) {

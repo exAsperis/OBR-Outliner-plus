@@ -1,6 +1,7 @@
 import type { Item } from "@owlbear-rodeo/sdk";
-import { linkedVirtualLayers, mutuallyExclusiveVirtualLayers, resolveGroupId, type EnforcedItemState, type InheritedItemState, type StatefulProperty, type VirtualInheritance, type VirtualLayerState } from "./virtualLayers.ts";
+import { linkedVirtualLayers, mutuallyExclusiveVirtualLayers, parseStatefulVirtualLayerName, resolveGroupId, STATEFUL_PROPERTIES, type EnforcedItemState, type InheritedItemState, type StatefulProperty, type VirtualInheritance, type VirtualLayerState } from "./virtualLayers.ts";
 import { getItemVisible, getTransparentState, isItemTransparent, needsTransparencyEnforcement } from "./transparentState.ts";
+import { getStoredLocalItemState } from "./localItemState.ts";
 
 const ITEM_INHERITANCE_METADATA_KEY = "com.ex-asperis.outliner/stateInheritance";
 const VIRTUAL_LAYER_METADATA_KEY = "com.ex-asperis.outliner/virtualLayer";
@@ -62,7 +63,14 @@ export function getItemParentRule(item: Pick<Item, "layer" | "metadata" | "id" |
 }
 
 export function getEffectiveItemRule(item: Pick<Item, "layer" | "metadata" | "id" | "zIndex">, state: VirtualLayerState) {
-  return getItemRule(item) ? {} : getItemParentRule(item, state);
+  const instructions = getItemRule(item) ? {} : getItemParentRule(item, state);
+  const definition = state.layers.find((entry) => entry.id === resolveItemGroup(item, state));
+  const stateful = definition && parseStatefulVirtualLayerName(definition.name);
+  if (!stateful) return instructions;
+  const groupKey = stateful.group.toLocaleLowerCase();
+  if (!Object.prototype.hasOwnProperty.call(state.stateSelections ?? {}, groupKey)) return instructions;
+  const selected = state.stateSelections?.[groupKey];
+  return selected !== stateful.state.toLocaleLowerCase() ? { ...instructions, transparent: true } : instructions;
 }
 
 export function directGroupItemIds(items: Item[], state: VirtualLayerState, layer: Item["layer"], groupId: string) {
@@ -126,8 +134,9 @@ export function calculateInheritanceUpdates(items: Item[], state: VirtualLayerSt
   const updates = new Map<string, InheritanceUpdate>();
   for (const item of items) {
     const itemRule = getItemRule(item);
-    const instructions = itemRule ? {} : getItemParentRule(item, state);
+    const instructions = getEffectiveItemRule(item, state);
     const transparentState = getTransparentState(item);
+    const localState = getStoredLocalItemState(item)?.values ?? {};
     if (itemRule?.legacy) {
       updates.set(item.id, { instructions, preserveTransparency: Boolean(transparentState) });
       continue;
@@ -138,7 +147,9 @@ export function calculateInheritanceUpdates(items: Item[], state: VirtualLayerSt
     const hitMismatch = has(instructions, "disableHit") && (item.disableHit === true) !== instructions.disableHit;
     const visibleMismatch = has(instructions, "visible") && getItemVisible(item) !== instructions.visible;
     const lockMismatch = has(instructions, "locked") && item.locked !== instructions.locked;
-    if (transparencyMismatch || hitMismatch || visibleMismatch || lockMismatch) updates.set(item.id, { instructions });
+    const shadowMismatch = STATEFUL_PROPERTIES.some((property) =>
+      has(instructions, property) ? localState[property] === undefined : localState[property] !== undefined);
+    if (transparencyMismatch || hitMismatch || visibleMismatch || lockMismatch || shadowMismatch) updates.set(item.id, { instructions });
   }
   return updates;
 }

@@ -20,7 +20,9 @@ import {
   reorderStackingGroup,
   reorderStatefulVirtualLayerState,
   stackGroup,
+  statefulVirtualLayerGroups,
   stateFromMetadata,
+  withStateSelection,
   type EnforcedItemState,
   type StatefulProperty,
   type VirtualInheritance,
@@ -40,6 +42,8 @@ import {
   withLinkedGroupProperty,
 } from "./stateInheritance";
 import { activateTransparency, getTransparentState, needsTransparencyEnforcement, restoreTransparency, setTransparentItemVisible } from "./transparentState";
+import { updateShadowedLocalItemProperty } from "./localItemState";
+import { applyEffectiveItemState } from "./effectiveItemState";
 
 let queue: Promise<void> = Promise.resolve();
 let writing = false;
@@ -165,26 +169,9 @@ export async function enforceStateInheritance(state?: VirtualLayerState) {
       if (getItemRule(item)?.legacy) item.metadata[ITEM_INHERITANCE_METADATA_KEY] = { independent: true };
       if (update.preserveTransparency && getTransparentState(item)) {
         activateTransparency(item, "direct");
-        continue;
       }
-      let stagedRestore = false;
-      if (Object.prototype.hasOwnProperty.call(instructions, "transparent")) {
-        if (instructions.transparent) activateTransparency(item, "inherited");
-        else {
-          const result = restoreTransparency(item, instructions.visible);
-          stagedRestore = result.restored;
-          if (result.restored) restores.set(item.id, result.reactivate);
-        }
-      } else if (getTransparentState(item)?.source === "inherited") {
-        const result = restoreTransparency(item, instructions.visible);
-        stagedRestore = result.restored;
-        if (result.restored) restores.set(item.id, result.reactivate);
-      }
-      if (typeof instructions.disableHit === "boolean") item.disableHit = instructions.disableHit;
-      if (!stagedRestore && typeof instructions.visible === "boolean" && !setTransparentItemVisible(item, instructions.visible)) {
-        item.visible = instructions.visible;
-      }
-      if (typeof instructions.locked === "boolean") item.locked = instructions.locked;
+      const result = applyEffectiveItemState(item, instructions);
+      if (result.restored) restores.set(item.id, result.reactivate);
     }
   }, true);
   await finishRestoredItems(restores);
@@ -282,6 +269,7 @@ export function setScopeProperty(scope: RuleScope, property: StatefulProperty, v
     if (directValues.size) await OBR.scene.items.updateItems([...directValues.keys()], (draft) => {
       for (const item of draft) {
         const directValue = directValues.get(item.id) ?? value;
+        if (updateShadowedLocalItemProperty(item, property, directValue)) continue;
         if (property === "transparent") {
           if (directValue) activateTransparency(item, "direct");
           else {
@@ -411,6 +399,7 @@ export function setItemTransparency(item: Item, value: boolean) {
   return serialized(async () => {
     let restore: { restored: boolean; reactivate: boolean } = { restored: false, reactivate: false };
     await OBR.scene.items.updateItems([item.id], (items) => {
+      if (updateShadowedLocalItemProperty(items[0], "transparent", value)) return;
       if (value) activateTransparency(items[0], "direct");
       else restore = restoreTransparency(items[0]);
     }, true);
@@ -429,8 +418,31 @@ export function moveStatefulVirtualLayerState(groupName: string, activeState: st
 export function setItemVisibility(item: Item, value: boolean) {
   return serialized(async () => {
     await OBR.scene.items.updateItems([item.id], (items) => {
+      if (updateShadowedLocalItemProperty(items[0], "visible", value)) return;
       if (!setTransparentItemVisible(items[0], value)) items[0].visible = value;
     }, true);
+  });
+}
+
+export function setStatefulVirtualLayerSelection(groupName: string, stateName: string | null) {
+  return serialized(async () => {
+    const state = await getState();
+    const groupKey = groupName.trim().toLocaleLowerCase();
+    if (!Object.prototype.hasOwnProperty.call(state.stateSelections ?? {}, groupKey)) {
+      // Before state participation was explicit, the switcher stored inactive
+      // states as direct transparency. Reclassify that legacy data once, before
+      // the first explicit selection, so it is not mistaken for local intent.
+      const group = statefulVirtualLayerGroups(state).find((entry) => entry.name.toLocaleLowerCase() === groupKey);
+      const layerIds = new Set(group?.states.flatMap((entry) => entry.layers.map((layer) => layer.id)) ?? []);
+      const items = await OBR.scene.items.getItems((item) => layerIds.has(getAssignmentId(item) ?? ""));
+      const legacyIds = items.filter((item) => getTransparentState(item)?.source === "direct").map((item) => item.id);
+      if (legacyIds.length) await OBR.scene.items.updateItems(legacyIds, (draft) => {
+        for (const item of draft) activateTransparency(item, "inherited");
+      }, true);
+    }
+    const next = withStateSelection(state, groupName, stateName);
+    await setState(next);
+    await enforceStateInheritance(next);
   });
 }
 

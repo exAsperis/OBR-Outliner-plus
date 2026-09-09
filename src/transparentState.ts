@@ -14,6 +14,7 @@ export interface StoredTransparentState {
   scale: Vector2;
   source: TransparencySource;
   visible?: boolean;
+  /** @deprecated Read only to restore metadata written by older releases. */
   disableHit?: boolean;
   label?: {
     fillOpacity: number;
@@ -36,8 +37,8 @@ export function parseTransparentState(value: unknown): StoredTransparentState | 
   return {
     scale: { x: scale.x, y: scale.y },
     source: candidate.source,
-    ...(typeof candidate.visible === "boolean" && typeof candidate.disableHit === "boolean"
-      ? { visible: candidate.visible, disableHit: candidate.disableHit } : {}),
+    ...(typeof candidate.visible === "boolean" ? { visible: candidate.visible } : {}),
+    ...(typeof candidate.disableHit === "boolean" ? { disableHit: candidate.disableHit } : {}),
     ...(label ? { label } : {}),
   };
 }
@@ -73,7 +74,6 @@ export function setTransparentItemVisible(item: Item, visible: boolean) {
   item.metadata[ITEM_TRANSPARENCY_METADATA_KEY] = {
     ...stored,
     visible,
-    disableHit: stored.disableHit ?? (item.disableHit === true),
   };
   item.visible = false;
   return true;
@@ -87,14 +87,13 @@ export function activateTransparency(item: Item, source: TransparencySource) {
         scale: { ...stored.scale },
         source,
         visible: stored.visible ?? item.visible,
-        disableHit: stored.disableHit ?? (item.disableHit === true),
+        ...(typeof stored.disableHit === "boolean" ? { disableHit: stored.disableHit } : {}),
         ...(stored.label ? { label: { ...stored.label } } : {}),
       }
     : {
         scale: { ...item.scale },
         source,
         visible: item.visible,
-        disableHit: item.disableHit === true,
       };
   if (labelStyle && !next.label) next.label = {
     fillOpacity: labelStyle.fillOpacity,
@@ -113,10 +112,8 @@ export function restoreTransparency(item: Item, finalVisible?: boolean): Transpa
   const stored = getTransparentState(item);
   if (!stored) return { restored: false, reactivate: false };
   item.scale = { ...stored.scale };
-  if (typeof stored.visible === "boolean" && typeof stored.disableHit === "boolean") {
-    item.visible = stored.visible;
-    item.disableHit = stored.disableHit;
-  }
+  if (typeof stored.visible === "boolean") item.visible = stored.visible;
+  if (typeof stored.disableHit === "boolean") item.disableHit = stored.disableHit;
   const textStyle = stored.label ? getImageTextStyle(item, false) : undefined;
   if (stored.label && textStyle) {
     textStyle.fillOpacity = stored.label.fillOpacity;
@@ -133,6 +130,6 @@ export function needsTransparencyEnforcement(item: Item) {
   if (!stored) return false;
   const labelStyle = getImageTextStyle(item, true);
   return item.scale.x !== 0 || item.scale.y !== 0 || item.visible ||
-    typeof stored.visible !== "boolean" || typeof stored.disableHit !== "boolean" ||
+    typeof stored.visible !== "boolean" ||
     Boolean(labelStyle && (!stored.label || labelStyle.fillOpacity !== 0 || labelStyle.strokeOpacity !== 0));
 }

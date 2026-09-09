@@ -27,7 +27,7 @@ test("captures scale and stages a visible restore without changing clickability"
   assert.equal(isItemTransparent(target), true);
   assert.equal(getItemVisible(target), true);
   assert.deepEqual(getTransparentState(target), {
-    scale: { x: 2.5, y: -3 }, source: "direct", visible: true, disableHit: true,
+    scale: { x: 2.5, y: -3 }, source: "direct", visible: true,
   });
   assert.deepEqual(restoreTransparency(target), { restored: true, reactivate: true });
   assert.deepEqual(target.scale, { x: 2.5, y: -3 });
@@ -41,7 +41,7 @@ test("repeated activation preserves the first captured values while updating pro
   activateTransparency(target, "direct");
   activateTransparency(target, "inherited");
   assert.deepEqual(getTransparentState(target), {
-    scale: { x: 2.5, y: -3 }, source: "inherited", visible: false, disableHit: false,
+    scale: { x: 2.5, y: -3 }, source: "inherited", visible: false,
   });
 });
 

@@ -18,8 +18,8 @@ import MinimizeIcon from "@mui/icons-material/CloseFullscreenRounded";
 import { useMemo, useRef, useState } from "react";
 import { isItemTransparent } from "./transparentState";
 import { useOwlbearStore } from "./useOwlbearStore";
-import { moveStatefulVirtualLayerState, setScopeProperty } from "./virtualLayerService";
-import { resolveGroupId, statefulVirtualLayerGroups, type StatefulVirtualLayerGroup } from "./virtualLayers";
+import { moveStatefulVirtualLayerState, setStatefulVirtualLayerSelection } from "./virtualLayerService";
+import { getStateSelection, resolveGroupId, statefulVirtualLayerGroups, type StatefulVirtualLayerGroup } from "./virtualLayers";
 import type { MinimizedOrientation } from "./outlinerLayout";
 
 type StatefulLayer = StatefulVirtualLayerGroup["states"][number];
@@ -42,13 +42,17 @@ function StateGroupRow({ group, switching, activate, hideAll, orientation }: { g
   const dragging = useRef(false);
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 5 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }), useSensor(KeyboardSensor));
   const ids = group.states.map((state) => `${group.name.toLocaleLowerCase()}\u0000${state.name.toLocaleLowerCase()}`);
-  const stateItems = group.states.map((state) => {
-    const layerIds = new Set(state.layers.map((layer) => layer.id));
-    return items.filter((item) => layerIds.has(resolveGroupId(item, virtualLayers)));
+  const selection = getStateSelection(virtualLayers, group.name);
+  const legacyStateItems = group.states.map((state) => {
+    const ids = new Set(state.layers.map((layer) => layer.id));
+    return items.filter((item) => ids.has(resolveGroupId(item, virtualLayers)));
   });
-  const activeStates = stateItems.map((items) => items.length > 0 && items.every((item) => !isItemTransparent(item)));
-  const allStateItems = stateItems.flat();
-  const allStatesHidden = allStateItems.length > 0 && allStateItems.every(isItemTransparent);
+  const activeStates = group.states.map((state, index) => selection === undefined
+    ? legacyStateItems[index].length > 0 && legacyStateItems[index].every((item) => !isItemTransparent(item))
+    : selection === state.name.toLocaleLowerCase());
+  const allStatesHidden = selection === undefined
+    ? legacyStateItems.flat().length > 0 && legacyStateItems.flat().every(isItemTransparent)
+    : selection === null;
   const activeIndex = activeStates.findIndex(Boolean);
   const step = (direction: -1 | 1) => {
     const fallback = direction < 0 ? group.states.length - 1 : 0;
@@ -92,10 +96,10 @@ export function StateSwitcher({ minimized = false, minimizedOrientation = "horiz
   const groups = useMemo(() => statefulVirtualLayerGroups(virtualLayers), [virtualLayers]);
   if (!groups.length) return null;
 
-  const activate = async (state: StatefulLayer) => {
+  const activate = async (groupName: string, state: StatefulLayer) => {
     setSwitching(true);
     try {
-      for (const layer of state.layers) await setScopeProperty({ kind: "group", layer: layer.obrLayer, groupId: layer.id }, "transparent", false);
+      await setStatefulVirtualLayerSelection(groupName, state.name);
     } finally {
       setSwitching(false);
     }
@@ -104,9 +108,7 @@ export function StateSwitcher({ minimized = false, minimizedOrientation = "horiz
   const hideAll = async (group: StatefulVirtualLayerGroup) => {
     setSwitching(true);
     try {
-      for (const state of group.states) {
-        for (const layer of state.layers) await setScopeProperty({ kind: "group", layer: layer.obrLayer, groupId: layer.id }, "transparent", true);
-      }
+      await setStatefulVirtualLayerSelection(group.name, null);
     } finally {
       setSwitching(false);
     }
@@ -119,7 +121,7 @@ export function StateSwitcher({ minimized = false, minimizedOrientation = "horiz
       <Tooltip title={minimized ? "Restore Outliner" : "Minimize to scene states"}><IconButton sx={iconButtonSx} aria-label={minimized ? "Restore Outliner" : "Minimize to scene states"} onClick={onModeToggle}>{minimized ? <RestoreIcon /> : <MinimizeIcon />}</IconButton></Tooltip>
     </Stack>
     <Stack direction={vertical ? "row" : "column"} spacing={0.75} alignItems={vertical ? "flex-start" : undefined}>
-      {groups.map((group) => <StateGroupRow key={group.name.toLocaleLowerCase()} group={group} switching={switching} activate={(state) => void activate(state)} hideAll={() => void hideAll(group)} orientation={vertical ? "vertical" : "horizontal"} />)}
+      {groups.map((group) => <StateGroupRow key={group.name.toLocaleLowerCase()} group={group} switching={switching} activate={(state) => void activate(group.name, state)} hideAll={() => void hideAll(group)} orientation={vertical ? "vertical" : "horizontal"} />)}
     </Stack>
   </Stack>;
 }

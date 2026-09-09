@@ -52,6 +52,7 @@ test("remembers a selected child while its guardian is suppressed", () => {
   assert.deepEqual(model.byDefinitionId.get("lights-on"), {
     participating: false, locallySelected: true, guardianParticipating: false, reasons: ["guardian-suppressed"],
   });
+  assert.deepEqual(model.byDefinitionId.get("lights-off")?.reasons, ["unselected", "guardian-suppressed"]);
   assert.equal(state.stateSelections?.["house: floor 1/lights"], "on");
 
   state = withStateGroupSelection(state, "house", "floor 1");

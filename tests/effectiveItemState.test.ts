@@ -4,6 +4,10 @@ import type { Item } from "@owlbear-rodeo/sdk";
 import { applyEffectiveItemState } from "../src/effectiveItemState.ts";
 import { getStoredLocalItemState, updateShadowedLocalItemProperty } from "../src/localItemState.ts";
 import { getItemVisible, isItemTransparent } from "../src/transparentState.ts";
+import { VIRTUAL_LAYER_METADATA_KEY } from "../src/constants.ts";
+import { getEffectiveItemRule } from "../src/stateInheritance.ts";
+import { withStateGroupSelection } from "../src/participation.ts";
+import type { VirtualLayerState } from "../src/virtualLayers.ts";
 
 function item(): Item {
   return {
@@ -76,5 +80,34 @@ test("ordinary external values remain untouched when no override or shadow exist
   assert.equal(target.locked, true);
   assert.equal(target.disableHit, true);
   assert.equal(target.visible, true);
+  assert.equal(getStoredLocalItemState(target), undefined);
+});
+
+test("local visibility survives stacked unselected and guardian suppression", () => {
+  const target = item();
+  target.metadata[VIRTUAL_LAYER_METADATA_KEY] = { virtualLayerId: "lights-off" };
+  let state: VirtualLayerState = {
+    version: 3,
+    layers: [
+      { id: "floor", name: "House: floor 1", obrLayer: "PROP", order: 0 },
+      { id: "basement", name: "House: basement", obrLayer: "PROP", order: 1 },
+      { id: "lights-on", name: "House: floor 1/Lights: on", obrLayer: "PROP", order: 2 },
+      { id: "lights-off", name: "House: floor 1/Lights: off", obrLayer: "PROP", order: 3 },
+    ],
+    stateSelections: { house: "basement", "house: floor 1/lights": "on" },
+  };
+
+  applyEffectiveItemState(target, getEffectiveItemRule(target, state));
+  assert.equal(isItemTransparent(target), true);
+  assert.equal(getItemVisible(target), false);
+
+  state = withStateGroupSelection(state, "house", "floor 1");
+  applyEffectiveItemState(target, getEffectiveItemRule(target, state));
+  assert.equal(isItemTransparent(target), true);
+
+  state = withStateGroupSelection(state, "house: floor 1/lights", "off");
+  finishRestore(target, applyEffectiveItemState(target, getEffectiveItemRule(target, state)));
+  assert.equal(isItemTransparent(target), false);
+  assert.equal(target.visible, false);
   assert.equal(getStoredLocalItemState(target), undefined);
 });

@@ -19,7 +19,7 @@ ignored by Git so it cannot replace the production manifest accidentally:
 ```json
 {
   "name": "Outliner+ (Local)",
-  "version": "0.4.4-local",
+  "version": "1.0.0-local",
   "manifest_version": 1,
   "author": "es Asperis",
   "icon": "/logo.png",
@@ -28,7 +28,7 @@ ignored by Git so it cannot replace the production manifest accidentally:
   "action": {
     "title": "Outliner+ (Local)",
     "icon": "/icon.svg",
-    "popover": "/extension.html?v=0.4.4-local",
+    "popover": "/extension.html?v=1.0.0-local",
     "height": 129,
     "width": 375
   }
@@ -88,6 +88,17 @@ Other source changes are hot-reloaded by Vite during development.
   a live Total count still calls out objects in layers hidden from the outline.
 
 See the [user guide](https://outliner-plus.ex-asperis.com/#overview) for a scene-building workflow, a state-linked layer example, and a concise control reference.
+
+## 1.0 compatibility
+
+Outliner+ 1.0 introduces canonical dependency paths, explicit state selection and
+participation, inheritance boundaries, and a local-versus-effective property
+model. These semantics are intentionally incompatible with scene metadata from
+0.x. Version 1.0 stores its scene model in a new metadata namespace, leaves 0.x
+metadata untouched, and displays a warning instead of partially applying or
+lossily migrating old rules. Recreate a scene's virtual layers in 1.0 after
+installing the new version. See [the 1.0 compatibility notes](docs/1.0-compatibility.md)
+for the precise behavior.
 
 ## Azure Static Web Apps
 

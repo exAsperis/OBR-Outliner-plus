@@ -3,6 +3,7 @@ import Stack from "@mui/material/Stack";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Box from "@mui/material/Box";
+import Alert from "@mui/material/Alert";
 import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
 import SettingsIcon from "@mui/icons-material/SettingsRounded";
 import OBR from "@owlbear-rodeo/sdk";
@@ -26,6 +27,7 @@ export function Outliner() {
   const switcherRef = useRef<HTMLDivElement>(null);
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const virtualLayersReady = useOwlbearStore((state) => state.virtualLayersReady);
+  const sceneModelCompatibility = useOwlbearStore((state) => state.sceneModelCompatibility);
   const sceneMinimizedLayout = useOwlbearStore((state) => state.sceneMinimizedLayout);
   const setSceneMinimizedLayout = useOwlbearStore((state) => state.setSceneMinimizedLayout);
   const hasStateGroups = useMemo(() => resolveParticipationModel(virtualLayers).stateGroups.length > 0, [virtualLayers]);
@@ -231,6 +233,12 @@ export function Outliner() {
       <Box ref={switcherRef} flexShrink={0} sx={{ width: isVerticalMinimized ? "max-content" : undefined }}><StateSwitcher minimized={isMinimized} minimizedOrientation={layout.minimizedOrientation} onModeToggle={() => setMode(isMinimized ? "full" : "minimized")} onOrientationToggle={() => setMinimizedOrientation(layout.minimizedOrientation === "horizontal" ? "vertical" : "horizontal")} /></Box>
       {!isMinimized && <SimpleBar style={{ minHeight: 0, flex: 1 }}>
         <List ref={listRef} disablePadding>
+          {sceneModelCompatibility === "legacy" && <Alert severity="warning" sx={{ m: 1 }}>
+            This scene contains Outliner+ 0.x data. Version 1.0 leaves it untouched and does not apply it; recreate this scene's virtual layers to use the new model.
+          </Alert>}
+          {sceneModelCompatibility === "invalid" && <Alert severity="error" sx={{ m: 1 }}>
+            This scene's Outliner+ 1.0 data is invalid, so no virtual-layer, inheritance, or participation rules are being applied.
+          </Alert>}
           {settingsOpen && <SettingsPanel />}
           <Items search={search} />
         </List>

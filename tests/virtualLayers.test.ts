@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { VIRTUAL_LAYER_METADATA_KEY } from "../src/constants.ts";
+import { LEGACY_VIRTUAL_LAYERS_METADATA_KEY, VIRTUAL_LAYERS_METADATA_KEY, VIRTUAL_LAYER_METADATA_KEY } from "../src/constants.ts";
 import {
   UNASSIGNED_ID,
   calculateNormalizationUpdates,
@@ -22,6 +22,7 @@ import {
   renameVirtualLayer,
   reorderVirtualLayer,
   reorderStackingGroup,
+  sceneModelCompatibility,
   stackGroup,
   resolveGroupId,
   withStateSelection,
@@ -29,7 +30,7 @@ import {
   type VirtualLayerState,
 } from "../src/virtualLayers.ts";
 
-const state: VirtualLayerState = { version: 2, layers: [
+const state: VirtualLayerState = { version: 3, layers: [
   { id: "roofs", name: "Roofs", obrLayer: "PROP", order: 0 },
   { id: "walls", name: "Walls", obrLayer: "PROP", order: 1 },
   { id: "pcs", name: "PCs", obrLayer: "CHARACTER", order: 0 },
@@ -78,7 +79,7 @@ test("parses stateful virtual-layer names and groups their mutually exclusive st
   assert.equal(parseStatefulVirtualLayerName(": Ground"), undefined);
   assert.equal(parseStatefulVirtualLayerName("Castle: "), undefined);
 
-  const stateful: VirtualLayerState = { version: 2, layers: [
+  const stateful: VirtualLayerState = { version: 3, layers: [
     { id: "ground", name: "Castle: Ground", obrLayer: "MAP", order: 0 },
     { id: "first", name: "Castle: First Floor", obrLayer: "PROP", order: 0 },
     { id: "first-linked", name: "Castle: First Floor", obrLayer: "DRAWING", order: 0 },
@@ -109,14 +110,23 @@ test("parses stateful virtual-layer names and groups their mutually exclusive st
   assert.equal(getStateSelection(withStateSelection(selected, "Castle", null), "castle"), null);
 });
 
-test("parses valid definitions and ignores malformed entries", () => {
-  const parsed = parseVirtualLayerState({ version: 1, layers: [state.layers[0], { id: 3 }] });
+test("parses schema-3 definitions and rejects incompatible schemas", () => {
+  const parsed = parseVirtualLayerState({ version: 3, layers: [state.layers[0], { id: 3 }] });
   assert.deepEqual(parsed.layers, [state.layers[0]]);
-  assert.deepEqual(parseVirtualLayerState({ version: 2, layers: [] }).layers, []);
+  assert.deepEqual(parseVirtualLayerState({ version: 2, layers: state.layers }).layers, []);
+  assert.deepEqual(parseVirtualLayerState({ version: 1, layers: state.layers }).layers, []);
+});
+
+test("detects old and invalid scene metadata without interpreting it", () => {
+  assert.equal(sceneModelCompatibility({}), "empty");
+  assert.equal(sceneModelCompatibility({ [LEGACY_VIRTUAL_LAYERS_METADATA_KEY]: { version: 2, layers: state.layers } }), "legacy");
+  assert.equal(sceneModelCompatibility({ [VIRTUAL_LAYERS_METADATA_KEY]: { version: 2, layers: state.layers } }), "invalid");
+  assert.equal(sceneModelCompatibility({ [VIRTUAL_LAYERS_METADATA_KEY]: state }), "current");
 });
 
 test("resolves missing, stale, and native-layer-mismatched assignments as Unassigned", () => {
   assert.equal(resolveGroupId(item("a", "PROP", 0), state), UNASSIGNED_ID);
+  assert.equal(resolveGroupId({ ...item("legacy", "PROP", 0), metadata: { "com.ex-asperis.outliner/virtualLayer": { virtualLayerId: "roofs" } } }, state), UNASSIGNED_ID);
   assert.equal(resolveGroupId(item("b", "PROP", 0, "missing"), state), UNASSIGNED_ID);
   assert.equal(resolveGroupId(item("c", "CHARACTER", 0, "roofs"), state), UNASSIGNED_ID);
   assert.equal(resolveGroupId(item("d", "PROP", 0, "roofs"), state), "roofs");

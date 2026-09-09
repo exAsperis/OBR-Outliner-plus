@@ -20,7 +20,7 @@ Spend less game time hunting through a crowded Scene. Outliner+ gives you a read
 - Lock finished scenery, make covering art click-through, reveal hidden elements on cue, and locate named items without breaking the flow of play.
 - Keep the panel focused with per-device Settings while a live total warns you about objects in layers hidden from the outline.
 
-State alternatives such as `Manor: Intact` and `Manor: Burning` are mutually exclusive: restoring one automatically makes the others transparent. Exact-name groups can be linked across Maps, Props, Drawings, and other layers to make a complete scene state change together.
+State alternatives such as `Manor: Intact` and `Manor: Burning` are mutually exclusive: selecting one suppresses the others without replacing their local visible/hidden state. Dependency paths such as `Manor: Intact/Lights: On` remember their child selection while a guardian is suppressed. Canonically identical full names can be linked across Maps, Props, Drawings, and other layers to make a complete logical scene layer respond together.
 
 See the [user guide](https://outliner-plus.ex-asperis.com/#overview) for a practical scene-building workflow and a concise control reference.
 

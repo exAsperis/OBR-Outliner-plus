@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Item } from "@owlbear-rodeo/sdk";
-import { ITEM_INHERITANCE_METADATA_KEY } from "../src/constants.ts";
+import { ITEM_INHERITANCE_METADATA_KEY, ITEM_LOCAL_STATE_METADATA_KEY, ITEM_TRANSPARENCY_METADATA_KEY, VIRTUAL_LAYER_METADATA_KEY } from "../src/constants.ts";
 import { activateTransparency, isItemTransparent, restoreTransparency } from "../src/transparentState.ts";
 import {
   calculateInheritanceUpdates,
@@ -33,7 +33,7 @@ import {
 
 const full: InheritedItemState = { disableHit: true, locked: true, visible: false, transparent: false };
 const state: VirtualLayerState = {
-  version: 2,
+  version: 3,
   layers: [{ id: "roofs", name: "Roofs", obrLayer: "PROP", order: 0 }],
   inheritance: {
     native: { PROP: { locked: true, visible: false } },
@@ -46,14 +46,14 @@ function item(id: string, assignment?: string, independent: unknown = false): It
   return {
     id, layer: "PROP", zIndex: 0, disableHit: false, locked: false, visible: true, scale: { x: 1, y: 1 },
     metadata: {
-      ...(assignment ? { "com.ex-asperis.outliner/virtualLayer": { virtualLayerId: assignment } } : {}),
+      ...(assignment ? { [VIRTUAL_LAYER_METADATA_KEY]: { virtualLayerId: assignment } } : {}),
       ...(independent ? { [ITEM_INHERITANCE_METADATA_KEY]: independent === true ? { independent: true } : independent } : {}),
     },
   } as Item;
 }
 
 test("derives a destination group's direct transparency for item moves", () => {
-  const family: VirtualLayerState = { version: 2, layers: [
+  const family: VirtualLayerState = { version: 3, layers: [
     { id: "day", name: "Manor: Day", obrLayer: "PROP", order: 0 },
     { id: "night", name: "Manor: Night", obrLayer: "PROP", order: 1 },
   ] };
@@ -67,18 +67,13 @@ test("derives a destination group's direct transparency for item moves", () => {
   assert.equal(directGroupTransparency([day], family, "PROP", "night"), undefined);
 });
 
-test("migrates legacy full rules into version-2 enforcement records", () => {
+test("rejects legacy scene inheritance instead of partially migrating it", () => {
   const parsed = parseVirtualLayerState({
     version: 1,
     layers: state.layers,
     inheritance: { native: { PROP: full }, virtual: { roofs: full }, unassigned: { PROP: full } },
   });
-  assert.equal(parsed.version, 2);
-  assert.deepEqual(parsed.inheritance, {
-    native: { PROP: full },
-    virtual: { roofs: { mode: "independent", enforce: full } },
-    unassigned: { PROP: { mode: "independent", enforce: full } },
-  });
+  assert.deepEqual(parsed, { version: 3, layers: [] });
 });
 
 test("parses partial instructions, modes, and legacy item overrides", () => {
@@ -105,7 +100,7 @@ test("calculates only changes for instructed properties", () => {
   assert.equal(updates.has("independent"), false);
   passThrough.locked = true;
   passThrough.visible = false;
-  passThrough.metadata["com.ex-asperis.outliner/localState"] = {
+  passThrough.metadata[ITEM_LOCAL_STATE_METADATA_KEY] = {
     version: 1, values: { locked: false, visible: true },
   };
   assert.equal(calculateInheritanceUpdates([passThrough], state).size, 0);
@@ -115,21 +110,21 @@ test("leaves ordinary values alone when their instructions disappear", () => {
   const target = item("target");
   target.locked = true;
   target.visible = false;
-  const withoutInstructions: VirtualLayerState = { version: 2, layers: state.layers };
+  const withoutInstructions: VirtualLayerState = { version: 3, layers: state.layers };
   assert.equal(calculateInheritanceUpdates([target], withoutInstructions).size, 0);
 });
 
 test("plans inherited transparency activation and restoration", () => {
   const target = item("target", "roofs");
   assert.deepEqual(calculateInheritanceUpdates([target], state).get("target"), { instructions: { transparent: true } });
-  target.metadata["com.ex-asperis.outliner/transparentState"] = {
+  target.metadata[ITEM_TRANSPARENCY_METADATA_KEY] = {
     scale: { x: 1, y: 1 }, source: "inherited", visible: true, disableHit: false,
   };
-  target.metadata["com.ex-asperis.outliner/localState"] = { version: 1, values: { transparent: false } };
+  target.metadata[ITEM_LOCAL_STATE_METADATA_KEY] = { version: 1, values: { transparent: false } };
   target.scale = { x: 0, y: 0 };
   target.visible = false;
   assert.equal(calculateInheritanceUpdates([target], state).size, 0);
-  const withoutRule: VirtualLayerState = { version: 2, layers: state.layers };
+  const withoutRule: VirtualLayerState = { version: 3, layers: state.layers };
   assert.deepEqual(calculateInheritanceUpdates([target], withoutRule).get("target"), { instructions: {} });
 });
 
@@ -137,7 +132,7 @@ test("state selection is a structural transparency override, not item visibility
   const selected = item("day", "day");
   const inactive = item("night", "night");
   const stateful: VirtualLayerState = {
-    version: 2,
+    version: 3,
     layers: [
       { id: "day", name: "Manor: Day", obrLayer: "PROP", order: 0 },
       { id: "night", name: "Manor: Night", obrLayer: "PROP", order: 1 },
@@ -159,7 +154,7 @@ test("state selection is a structural transparency override, not item visibility
 
 test("allows visibility and click-through instructions to compose with transparency", () => {
   const target = item("compound", "roofs");
-  target.metadata["com.ex-asperis.outliner/transparentState"] = { scale: { x: 1, y: 1 }, source: "inherited" };
+  target.metadata[ITEM_TRANSPARENCY_METADATA_KEY] = { scale: { x: 1, y: 1 }, source: "inherited" };
   target.scale = { x: 0, y: 0 };
   target.visible = false;
   target.disableHit = true;
@@ -176,7 +171,7 @@ test("allows visibility and click-through instructions to compose with transpare
 
 test("migrates a legacy independent transparent item without restoring it", () => {
   const target = item("legacy", undefined, full);
-  target.metadata["com.ex-asperis.outliner/transparentState"] = {
+  target.metadata[ITEM_TRANSPARENCY_METADATA_KEY] = {
     scale: { x: 1, y: 1 }, visible: true, disableHit: false, source: "inherited",
   };
   assert.deepEqual(calculateInheritanceUpdates([target], state).get("legacy"), { instructions: {}, preserveTransparency: true });
@@ -263,7 +258,7 @@ test("derives native direct targets from current inheritance eligibility", () =>
 
 test("linked and dependent virtual layers block native cascading inheritance", () => {
   const boundary: VirtualLayerState = {
-    version: 2,
+    version: 3,
     layers: [
       { id: "linked", name: "Shared", obrLayer: "PROP", order: 0 },
       { id: "linked-map", name: "shared", obrLayer: "MAP", order: 0 },
@@ -327,7 +322,7 @@ test("creating and renaming linked layers never copies inheritance configuration
 test("Tomb switches synchronize enforced Props and direct Maps with an unmatched third state", () => {
   for (const extraLayer of ["MAP", "PROP"] as const) {
     let tomb: VirtualLayerState = {
-      version: 2,
+      version: 3,
       layers: [
         { id: "p2", name: "Tomb: -2", obrLayer: "PROP", order: 0 },
         { id: "p4", name: "Tomb: -4", obrLayer: "PROP", order: 1 },

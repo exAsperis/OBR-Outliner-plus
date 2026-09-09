@@ -68,6 +68,7 @@ test("local edits made through Outliner update the shadow while an override is a
 
 test("ordinary external values remain untouched when no override or shadow exists", () => {
   const target = item();
+  target.metadata["com.ex-asperis.outliner/localState"] = { version: 1, values: { locked: false } };
   target.locked = true;
   target.disableHit = true;
   target.visible = true;

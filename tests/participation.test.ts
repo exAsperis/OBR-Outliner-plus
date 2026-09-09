@@ -8,7 +8,7 @@ const layer = (id: string, name: string, obrLayer: VirtualLayerDefinition["obrLa
 
 function houseState(): VirtualLayerState {
   return {
-    version: 2,
+    version: 3,
     layers: [
       layer("floor", "House: floor 1"),
       layer("basement", "House: basement", "PROP", 1),

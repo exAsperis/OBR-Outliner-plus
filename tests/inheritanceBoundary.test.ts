@@ -4,7 +4,7 @@ import { getInheritanceBoundary, inheritanceBoundaryDescription, withoutBoundary
 import { createVirtualLayer, renameVirtualLayer, type VirtualLayerState } from "../src/virtualLayers.ts";
 
 const state: VirtualLayerState = {
-  version: 2,
+  version: 3,
   layers: [
     { id: "ordinary", name: "Ordinary", obrLayer: "PROP", order: 0 },
     { id: "linked-prop", name: "Shared", obrLayer: "PROP", order: 1 },

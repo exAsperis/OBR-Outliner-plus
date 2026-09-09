@@ -1,7 +1,7 @@
 import OBR, { Player } from "@owlbear-rodeo/sdk";
 import { useOwlbearStore } from "./useOwlbearStore";
 import { useEffect, useState } from "react";
-import { stateFromMetadata, EMPTY_VIRTUAL_LAYER_STATE } from "./virtualLayers";
+import { sceneModelCompatibility, stateFromMetadata, EMPTY_VIRTUAL_LAYER_STATE } from "./virtualLayers";
 import { DEFAULT_SCENE_MINIMIZED_LAYOUT, sceneMinimizedLayoutFromMetadata } from "./sceneMinimizedLayout";
 
 // Sync OBR with the apps Zustand store
@@ -54,12 +54,12 @@ export function useOwlbearStoreSync() {
   const setSceneMinimizedLayout = useOwlbearStore((state) => state.setSceneMinimizedLayout);
   useEffect(() => {
     if (!isGameMaster || !sceneReady) {
-      setVirtualLayers(EMPTY_VIRTUAL_LAYER_STATE, false);
+      setVirtualLayers(EMPTY_VIRTUAL_LAYER_STATE, false, "empty");
       setSceneMinimizedLayout(DEFAULT_SCENE_MINIMIZED_LAYOUT);
       return;
     }
     const applyMetadata = (metadata: Record<string, unknown>) => {
-      setVirtualLayers(stateFromMetadata(metadata));
+      setVirtualLayers(stateFromMetadata(metadata), true, sceneModelCompatibility(metadata));
       setSceneMinimizedLayout(sceneMinimizedLayoutFromMetadata(metadata));
     };
     OBR.scene.getMetadata().then(applyMetadata);

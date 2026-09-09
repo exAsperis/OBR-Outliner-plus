@@ -1,7 +1,8 @@
 import type { Item } from "@owlbear-rodeo/sdk";
-import { linkedVirtualLayers, mutuallyExclusiveVirtualLayers, parseStatefulVirtualLayerName, resolveGroupId, STATEFUL_PROPERTIES, type EnforcedItemState, type InheritedItemState, type StatefulProperty, type VirtualInheritance, type VirtualLayerState } from "./virtualLayers.ts";
+import { linkedVirtualLayers, mutuallyExclusiveVirtualLayers, resolveGroupId, STATEFUL_PROPERTIES, type EnforcedItemState, type InheritedItemState, type StatefulProperty, type VirtualInheritance, type VirtualLayerState } from "./virtualLayers.ts";
 import { getItemVisible, getTransparentState, isItemTransparent, needsTransparencyEnforcement } from "./transparentState.ts";
 import { getStoredLocalItemState } from "./localItemState.ts";
+import { resolveParticipationModel, type ResolvedParticipationModel } from "./participation.ts";
 
 const ITEM_INHERITANCE_METADATA_KEY = "com.ex-asperis.outliner/stateInheritance";
 const VIRTUAL_LAYER_METADATA_KEY = "com.ex-asperis.outliner/virtualLayer";
@@ -62,15 +63,12 @@ export function getItemParentRule(item: Pick<Item, "layer" | "metadata" | "id" |
   return getGroupEffectiveInstructions(state, item.layer, resolveItemGroup(item, state));
 }
 
-export function getEffectiveItemRule(item: Pick<Item, "layer" | "metadata" | "id" | "zIndex">, state: VirtualLayerState) {
+export function getEffectiveItemRule(item: Pick<Item, "layer" | "metadata" | "id" | "zIndex">, state: VirtualLayerState,
+  participation: ResolvedParticipationModel = resolveParticipationModel(state)) {
   const instructions = getItemRule(item) ? {} : getItemParentRule(item, state);
-  const definition = state.layers.find((entry) => entry.id === resolveItemGroup(item, state));
-  const stateful = definition && parseStatefulVirtualLayerName(definition.name);
-  if (!stateful) return instructions;
-  const groupKey = stateful.group.toLocaleLowerCase();
-  if (!Object.prototype.hasOwnProperty.call(state.stateSelections ?? {}, groupKey)) return instructions;
-  const selected = state.stateSelections?.[groupKey];
-  return selected !== stateful.state.toLocaleLowerCase() ? { ...instructions, transparent: true } : instructions;
+  const groupId = resolveItemGroup(item, state);
+  const layerParticipation = participation.byDefinitionId.get(groupId);
+  return layerParticipation && !layerParticipation.participating ? { ...instructions, transparent: true } : instructions;
 }
 
 export function directGroupItemIds(items: Item[], state: VirtualLayerState, layer: Item["layer"], groupId: string) {
@@ -132,9 +130,10 @@ const has = (rule: EnforcedItemState, property: StatefulProperty) => Object.prot
 
 export function calculateInheritanceUpdates(items: Item[], state: VirtualLayerState) {
   const updates = new Map<string, InheritanceUpdate>();
+  const participation = resolveParticipationModel(state);
   for (const item of items) {
     const itemRule = getItemRule(item);
-    const instructions = getEffectiveItemRule(item, state);
+    const instructions = getEffectiveItemRule(item, state, participation);
     const transparentState = getTransparentState(item);
     const localState = getStoredLocalItemState(item)?.values ?? {};
     if (itemRule?.legacy) {

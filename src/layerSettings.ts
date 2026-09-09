@@ -76,12 +76,23 @@ function emit(settings: LayerDisplaySettings) {
 }
 
 export function setLayerEnabled(layer: Item["layer"], enabled: boolean) {
-  const selected = new Set(current.enabledLayers);
-  if (enabled) selected.add(layer); else selected.delete(layer);
-  const next: LayerDisplaySettings = {
-    ...current,
+  setLayersEnabled([layer], enabled);
+}
+
+export function withLayersEnabled(settings: LayerDisplaySettings, layers: Iterable<Item["layer"]>, enabled: boolean): LayerDisplaySettings {
+  const selected = new Set(settings.enabledLayers);
+  for (const layer of layers) {
+    if (enabled) selected.add(layer); else selected.delete(layer);
+  }
+  return {
+    ...settings,
     enabledLayers: OUTLINER_LAYERS_TOP_TO_BOTTOM.filter((candidate) => selected.has(candidate)),
   };
+}
+
+export function setLayersEnabled(layers: Iterable<Item["layer"]>, enabled: boolean) {
+  const next = withLayersEnabled(current, layers, enabled);
+  if (next.enabledLayers.length === current.enabledLayers.length && next.enabledLayers.every((layer, index) => layer === current.enabledLayers[index])) return;
   try { window.localStorage.setItem(LAYER_DISPLAY_SETTINGS_KEY, JSON.stringify(next)); } catch { /* Keep the live preference when storage is unavailable. */ }
   emit(next);
 }

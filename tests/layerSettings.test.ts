@@ -6,6 +6,7 @@ import {
   LAYER_DISPLAY_SETTINGS_KEY,
   parseLayerDisplaySettings,
   readLayerDisplaySettings,
+  withLayersEnabled,
 } from "../src/layerSettings.ts";
 
 test("parses enabled layers in canonical order and removes unknown values", () => {
@@ -39,4 +40,18 @@ test("loads persisted settings from the namespaced local-storage key", () => {
     return JSON.stringify({ version: 1, enabledLayers: ["GRID", "MAP"] });
   } };
   assert.deepEqual(readLayerDisplaySettings(storage).enabledLayers, ["GRID", "MAP"]);
+});
+
+test("bulk layer updates preserve canonical order and unrelated choices", () => {
+  const settings = { ...DEFAULT_LAYER_DISPLAY_SETTINGS, enabledLayers: ["FOG", "PROP", "MAP"] };
+  assert.deepEqual(withLayersEnabled(settings, ["CHARACTER", "DRAWING"], true).enabledLayers, ["FOG", "CHARACTER", "PROP", "DRAWING", "MAP"]);
+  assert.deepEqual(withLayersEnabled(settings, ["PROP", "DRAWING"], false).enabledLayers, ["FOG", "MAP"]);
+});
+
+test("incremental bulk layer updates leave layers outside the requested set unchanged", () => {
+  const settings = { ...DEFAULT_LAYER_DISPLAY_SETTINGS, enabledLayers: ["FOG", "CHARACTER", "MAP"] };
+  const hiddenEmpty = withLayersEnabled(settings, ["MAP"], false);
+  assert.deepEqual(hiddenEmpty.enabledLayers, ["FOG", "CHARACTER"]);
+  const shownPopulated = withLayersEnabled(hiddenEmpty, ["PROP"], true);
+  assert.deepEqual(shownPopulated.enabledLayers, ["FOG", "CHARACTER", "PROP"]);
 });

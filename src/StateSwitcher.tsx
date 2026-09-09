@@ -1,40 +1,54 @@
 import { closestCenter, DndContext, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
+import { rectSortingStrategy, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Button from "@mui/material/Button";
+import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import SvgIcon from "@mui/material/SvgIcon";
+import HideAllStatesIcon from "@mui/icons-material/BlockRounded";
 import PreviousIcon from "@mui/icons-material/ChevronLeftRounded";
 import NextIcon from "@mui/icons-material/ChevronRightRounded";
+import PreviousVerticalIcon from "@mui/icons-material/KeyboardArrowUpRounded";
+import NextVerticalIcon from "@mui/icons-material/KeyboardArrowDownRounded";
+import RestoreIcon from "@mui/icons-material/OpenInFullRounded";
+import MinimizeIcon from "@mui/icons-material/CloseFullscreenRounded";
 import { useMemo, useRef, useState } from "react";
 import { isItemTransparent } from "./transparentState";
 import { useOwlbearStore } from "./useOwlbearStore";
 import { moveStatefulVirtualLayerState, setScopeProperty } from "./virtualLayerService";
 import { resolveGroupId, statefulVirtualLayerGroups, type StatefulVirtualLayerGroup } from "./virtualLayers";
+import type { MinimizedOrientation } from "./outlinerLayout";
 
 type StatefulLayer = StatefulVirtualLayerGroup["states"][number];
 
 function StateButton({ group, state, active, disabled, onActivate }: { group: string; state: StatefulLayer; active: boolean; disabled: boolean; onActivate: () => void }) {
   const id = `${group.toLocaleLowerCase()}\u0000${state.name.toLocaleLowerCase()}`;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, data: { group, state: state.name } });
-  return <Button ref={setNodeRef} {...attributes} {...listeners} size="small" color="info" variant={active ? "contained" : "outlined"} disabled={disabled} aria-pressed={active} onClick={onActivate} sx={{ minWidth: 0, maxWidth: "100%", py: 0.25, px: 1, whiteSpace: "normal", textTransform: "none", transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 1 : undefined, cursor: isDragging ? "grabbing" : "grab" }}>
-    {state.name}
-  </Button>;
+  return <Box ref={setNodeRef} sx={{ minWidth: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 1 : undefined }}>
+    <Button {...attributes} {...listeners} size="small" color={active ? "primary" : "inherit"} variant={active ? "contained" : "outlined"} disabled={disabled} aria-pressed={active} onClick={onActivate} sx={{ minWidth: 0, maxWidth: "100%", height: 24, minHeight: 24, py: 0, px: 1, whiteSpace: "normal", textTransform: "none", cursor: isDragging ? "grabbing" : "grab" }}>
+      {state.name}
+    </Button>
+  </Box>;
 }
 
-function StateGroupRow({ group, switching, activate }: { group: StatefulVirtualLayerGroup; switching: boolean; activate: (state: StatefulLayer) => void }) {
+const iconButtonSx = { width: 40, height: 40, p: 0, "& .MuiSvgIcon-root": { width: 24, height: 24 } } as const;
+
+function StateGroupRow({ group, switching, activate, hideAll, orientation }: { group: StatefulVirtualLayerGroup; switching: boolean; activate: (state: StatefulLayer) => void; hideAll: () => void; orientation: MinimizedOrientation }) {
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const items = useOwlbearStore((state) => state.items);
   const dragging = useRef(false);
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 5 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }), useSensor(KeyboardSensor));
   const ids = group.states.map((state) => `${group.name.toLocaleLowerCase()}\u0000${state.name.toLocaleLowerCase()}`);
-  const activeStates = group.states.map((state) => {
+  const stateItems = group.states.map((state) => {
     const layerIds = new Set(state.layers.map((layer) => layer.id));
-    const stateItems = items.filter((item) => layerIds.has(resolveGroupId(item, virtualLayers)));
-    return stateItems.length > 0 && stateItems.every((item) => !isItemTransparent(item));
+    return items.filter((item) => layerIds.has(resolveGroupId(item, virtualLayers)));
   });
+  const activeStates = stateItems.map((items) => items.length > 0 && items.every((item) => !isItemTransparent(item)));
+  const allStateItems = stateItems.flat();
+  const allStatesHidden = allStateItems.length > 0 && allStateItems.every(isItemTransparent);
   const activeIndex = activeStates.findIndex(Boolean);
   const step = (direction: -1 | 1) => {
     const fallback = direction < 0 ? group.states.length - 1 : 0;
@@ -48,23 +62,31 @@ function StateGroupRow({ group, switching, activate }: { group: StatefulVirtualL
     window.setTimeout(() => { dragging.current = false; }, 0);
   };
 
-  return <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minWidth: 0 }}>
-    <Typography variant="caption" fontWeight={700} noWrap sx={{ minWidth: 72, maxWidth: 120 }} title={group.name}>{group.name}</Typography>
-    <Tooltip title={`Previous ${group.name} state`}><span><IconButton size="small" disabled={switching || group.states.length < 2} aria-label={`Previous ${group.name} state`} onClick={() => step(-1)}><PreviousIcon fontSize="small" /></IconButton></span></Tooltip>
+  const vertical = orientation === "vertical";
+  return <Stack direction={vertical ? "column" : "row"} alignItems="center" spacing={0} sx={{ minWidth: 0, flexShrink: 0 }}>
+    <Typography variant="caption" fontWeight={700} noWrap sx={{ minWidth: vertical ? 0 : 72, maxWidth: 120, textAlign: vertical ? "center" : undefined }} title={group.name}>{group.name}</Typography>
+    <Tooltip title={`Hide all ${group.name} states`}><span><IconButton sx={iconButtonSx} color={allStatesHidden ? "primary" : "default"} disabled={switching} aria-label={`Hide all ${group.name} states`} aria-pressed={allStatesHidden} onClick={hideAll}><HideAllStatesIcon /></IconButton></span></Tooltip>
+    <Tooltip title={`Previous ${group.name} state`}><span><IconButton sx={iconButtonSx} disabled={switching || group.states.length < 2} aria-label={`Previous ${group.name} state`} onClick={() => step(-1)}>{vertical ? <PreviousVerticalIcon /> : <PreviousIcon />}</IconButton></span></Tooltip>
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={() => { dragging.current = true; }} onDragCancel={() => { dragging.current = false; }} onDragEnd={dragEnd}>
-      <SortableContext items={ids} strategy={rectSortingStrategy}>
-        <Stack direction="row" sx={{ minWidth: 0, flex: 1, flexWrap: "wrap", gap: 0.5, pb: 0.25 }}>
+      <SortableContext items={ids} strategy={vertical ? verticalListSortingStrategy : rectSortingStrategy}>
+        <Stack direction={vertical ? "column" : "row"} alignItems="center" sx={{ minWidth: 0, flex: vertical ? undefined : 1, flexWrap: vertical ? "nowrap" : "wrap", gap: 0 }}>
           {group.states.map((state, index) => {
             return <StateButton key={state.name.toLocaleLowerCase()} group={group.name} state={state} active={activeStates[index]} disabled={switching} onActivate={() => { if (!dragging.current) activate(state); }} />;
           })}
         </Stack>
       </SortableContext>
     </DndContext>
-    <Tooltip title={`Next ${group.name} state`}><span><IconButton size="small" disabled={switching || group.states.length < 2} aria-label={`Next ${group.name} state`} onClick={() => step(1)}><NextIcon fontSize="small" /></IconButton></span></Tooltip>
+    <Tooltip title={`Next ${group.name} state`}><span><IconButton sx={iconButtonSx} disabled={switching || group.states.length < 2} aria-label={`Next ${group.name} state`} onClick={() => step(1)}>{vertical ? <NextVerticalIcon /> : <NextIcon />}</IconButton></span></Tooltip>
   </Stack>;
 }
 
-export function StateSwitcher() {
+function LayoutOrientationIcon() {
+  return <SvgIcon fontSize="small" viewBox="0 0 24 24">
+    <path d="M5 4v15m0 0-3-3m3 3 3-3M5 5h14m0 0-3-3m3 3-3 3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </SvgIcon>;
+}
+
+export function StateSwitcher({ minimized = false, minimizedOrientation = "horizontal", onModeToggle, onOrientationToggle }: { minimized?: boolean; minimizedOrientation?: MinimizedOrientation; onModeToggle: () => void; onOrientationToggle: () => void }) {
   const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
   const [switching, setSwitching] = useState(false);
   const groups = useMemo(() => statefulVirtualLayerGroups(virtualLayers), [virtualLayers]);
@@ -79,7 +101,25 @@ export function StateSwitcher() {
     }
   };
 
-  return <Stack component="section" aria-label="Scene states" spacing={0.75} sx={{ px: 1, py: 0.75, flexShrink: 0, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper", maxHeight: "35vh", overflowY: "auto" }}>
-    {groups.map((group) => <StateGroupRow key={group.name.toLocaleLowerCase()} group={group} switching={switching} activate={(state) => void activate(state)} />)}
+  const hideAll = async (group: StatefulVirtualLayerGroup) => {
+    setSwitching(true);
+    try {
+      for (const state of group.states) {
+        for (const layer of state.layers) await setScopeProperty({ kind: "group", layer: layer.obrLayer, groupId: layer.id }, "transparent", true);
+      }
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  const vertical = minimized && minimizedOrientation === "vertical";
+  return <Stack component="section" aria-label="Scene states" spacing={0.75} sx={{ px: 1, py: 0.75, flexShrink: 0, borderBottom: 1, borderColor: "divider", bgcolor: minimized ? "transparent" : "background.paper", boxSizing: "border-box", width: vertical ? "max-content" : undefined, height: vertical ? "100vh" : undefined, maxHeight: minimized ? (vertical ? "100vh" : "none") : "35vh", overflowY: minimized ? (vertical ? "auto" : "visible") : "auto", overflowX: vertical ? "visible" : undefined }}>
+    <Stack direction="row" justifyContent="flex-end" alignItems="center" flexWrap="wrap" sx={{ width: "100%" }}>
+      {minimized && <Tooltip title={`Use ${minimizedOrientation === "horizontal" ? "vertical" : "horizontal"} minified layout`}><IconButton sx={iconButtonSx} aria-label={`Use ${minimizedOrientation === "horizontal" ? "vertical" : "horizontal"} minified layout`} onClick={onOrientationToggle}><LayoutOrientationIcon /></IconButton></Tooltip>}
+      <Tooltip title={minimized ? "Restore Outliner" : "Minimize to scene states"}><IconButton sx={iconButtonSx} aria-label={minimized ? "Restore Outliner" : "Minimize to scene states"} onClick={onModeToggle}>{minimized ? <RestoreIcon /> : <MinimizeIcon />}</IconButton></Tooltip>
+    </Stack>
+    <Stack direction={vertical ? "row" : "column"} spacing={0.75} alignItems={vertical ? "flex-start" : undefined}>
+      {groups.map((group) => <StateGroupRow key={group.name.toLocaleLowerCase()} group={group} switching={switching} activate={(state) => void activate(state)} hideAll={() => void hideAll(group)} orientation={vertical ? "vertical" : "horizontal"} />)}
+    </Stack>
   </Stack>;
 }

@@ -44,6 +44,7 @@ import {
 import { activateTransparency, getTransparentState, needsTransparencyEnforcement, restoreTransparency, setTransparentItemVisible } from "./transparentState";
 import { updateShadowedLocalItemProperty } from "./localItemState";
 import { applyEffectiveItemState } from "./effectiveItemState";
+import { getInheritanceBoundary } from "./inheritanceBoundary";
 
 let queue: Promise<void> = Promise.resolve();
 let writing = false;
@@ -204,6 +205,7 @@ function withGroupInheritance(state: VirtualLayerState, scope: Extract<RuleScope
 export function setGroupInheritanceMode(scope: Extract<RuleScope, { kind: "group" }>, mode: VirtualInheritance["mode"]) {
   return serialized(async () => {
     const state = await getState();
+    if (getInheritanceBoundary(state, scope.groupId)) return;
     const next = withGroupInheritance(state, scope, mode === "pass-through" ? { mode } : { mode, enforce: {} });
     await setState(next);
     await enforceStateInheritance(next);
@@ -219,6 +221,7 @@ export function setScopeEnforcement(scope: RuleScope, property: StatefulProperty
       if (enabled) enforce[property] = capturedValue; else delete enforce[property];
       next = withNativeInstructions(state, scope.layer, enforce);
     } else {
+      if (getInheritanceBoundary(state, scope.groupId)) return;
       const config = getGroupInheritance(state, scope.layer, scope.groupId);
       if (config.mode !== "independent") return;
       const enforce = { ...config.enforce };

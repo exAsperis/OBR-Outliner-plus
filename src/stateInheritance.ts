@@ -3,6 +3,7 @@ import { linkedVirtualLayers, mutuallyExclusiveVirtualLayers, resolveGroupId, ST
 import { getItemVisible, getTransparentState, isItemTransparent, needsTransparencyEnforcement } from "./transparentState.ts";
 import { getStoredLocalItemState } from "./localItemState.ts";
 import { resolveParticipationModel, type ResolvedParticipationModel } from "./participation.ts";
+import { getInheritanceBoundary } from "./inheritanceBoundary.ts";
 
 const ITEM_INHERITANCE_METADATA_KEY = "com.ex-asperis.outliner/stateInheritance";
 const VIRTUAL_LAYER_METADATA_KEY = "com.ex-asperis.outliner/virtualLayer";
@@ -42,11 +43,13 @@ export function getGroupInheritance(state: VirtualLayerState, layer: Item["layer
 }
 
 export function getGroupRule(state: VirtualLayerState, layer: Item["layer"], groupId: string): EnforcedItemState | undefined {
+  if (getInheritanceBoundary(state, groupId)) return undefined;
   const config = getGroupInheritance(state, layer, groupId);
   return config.mode === "independent" ? config.enforce : undefined;
 }
 
 export function getGroupEffectiveInstructions(state: VirtualLayerState, layer: Item["layer"], groupId: string): EnforcedItemState {
+  if (getInheritanceBoundary(state, groupId)) return {};
   const config = getGroupInheritance(state, layer, groupId);
   return config.mode === "independent" ? config.enforce : getNativeRule(state, layer);
 }
@@ -77,6 +80,7 @@ export function directGroupItemIds(items: Item[], state: VirtualLayerState, laye
 
 export function directNativeItemIds(items: Item[], state: VirtualLayerState, layer: Item["layer"]) {
   return items.filter((item) => item.layer === layer && !getItemRule(item) &&
+    !getInheritanceBoundary(state, resolveGroupId(item, state)) &&
     getGroupInheritance(state, layer, resolveGroupId(item, state)).mode === "pass-through").map((item) => item.id);
 }
 
@@ -85,7 +89,7 @@ export function linkedDirectPropertyItemIds(items: Item[], state: VirtualLayerSt
   if (!source) return [];
   // A locally enforced property is editable and must still reach linked peers.
   // An instruction inherited from the native layer cannot be edited here.
-  if (getGroupInheritance(state, source.obrLayer, source.id).mode === "pass-through" &&
+  if (!getInheritanceBoundary(state, source.id) && getGroupInheritance(state, source.obrLayer, source.id).mode === "pass-through" &&
       Object.prototype.hasOwnProperty.call(getNativeRule(state, source.obrLayer), property)) return [];
   return linkedVirtualLayers(state, sourceId).filter((layer) =>
     !Object.prototype.hasOwnProperty.call(getGroupEffectiveInstructions(state, layer.obrLayer, layer.id), property))

@@ -1,6 +1,7 @@
 import type { Item } from "@owlbear-rodeo/sdk";
 import type { StackOperation } from "./stacking";
 import { canonicalizeVirtualLayerName, canonicalVirtualLayerIdentity, parseVirtualLayerPath } from "./virtualLayerName.ts";
+import { withoutBoundaryInheritance } from "./inheritanceBoundary.ts";
 const VIRTUAL_LAYERS_METADATA_KEY = "com.ex-asperis.outliner/virtualLayers";
 const VIRTUAL_LAYER_METADATA_KEY = "com.ex-asperis.outliner/virtualLayer";
 
@@ -135,9 +136,9 @@ export function parseVirtualLayerState(value: unknown): VirtualLayerState {
       stateSelections[groupKey] = typeof selection === "string" ? selection.trim().toLocaleLowerCase() : null;
     }
   }
-  return { version: 2, layers, ...(Object.keys(unassignedOrders).length ? { unassignedOrders } : {}),
+  return withoutBoundaryInheritance({ version: 2, layers, ...(Object.keys(unassignedOrders).length ? { unassignedOrders } : {}),
     ...(Object.keys(stateOrders).length ? { stateOrders } : {}),
-    ...(Object.keys(stateSelections).length ? { stateSelections } : {}), ...(inheritance ? { inheritance } : {}) };
+    ...(Object.keys(stateSelections).length ? { stateSelections } : {}), ...(inheritance ? { inheritance } : {}) });
 }
 
 export function stateFromMetadata(metadata: Record<string, unknown>) {
@@ -279,13 +280,13 @@ export function createVirtualLayer(state: VirtualLayerState, obrLayer: Item["lay
   const groups = orderedGroupIds(next, obrLayer).filter((groupId) => groupId !== id);
   const unassignedIndex = groups.indexOf(UNASSIGNED_ID);
   groups.splice(unassignedIndex < 0 ? groups.length : unassignedIndex, 0, id);
-  return applyGroupOrder(next, obrLayer, groups);
+  return withoutBoundaryInheritance(applyGroupOrder(next, obrLayer, groups));
 }
 
 export function renameVirtualLayer(state: VirtualLayerState, id: string, name: string): VirtualLayerState {
   if (!state.layers.some((entry) => entry.id === id)) throw new Error("Virtual layer does not exist.");
   const validName = validateName(name);
-  return { ...state, layers: state.layers.map((entry) => entry.id === id ? { ...entry, name: validName } : entry) };
+  return withoutBoundaryInheritance({ ...state, layers: state.layers.map((entry) => entry.id === id ? { ...entry, name: validName } : entry) });
 }
 
 export function deleteVirtualLayer(state: VirtualLayerState, id: string): VirtualLayerState {

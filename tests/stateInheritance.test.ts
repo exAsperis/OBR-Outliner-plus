@@ -247,19 +247,39 @@ test("plans linked property updates by effective property instructions rather th
     placed("drawing", "DRAWING", "drawing-roofs"),
     placed("text", "TEXT", "text-roofs"),
   ];
-  assert.deepEqual(linkedDirectPropertyItemIds(items, linked, "roofs", "locked"), ["source", "source-independent", "map", "map-independent", "character", "drawing"]);
-  assert.deepEqual(linkedDirectPropertyItemIds(items, linked, "roofs", "visible"), ["source", "source-independent", "character", "drawing", "text"]);
-  assert.deepEqual(linkedDirectPropertyItemIds(items, linked, "roofs", "disableHit"), ["source", "source-independent", "map", "map-independent", "character", "text"]);
-  assert.deepEqual(linkedDirectPropertyItemIds(items, linked, "roofs", "transparent"), ["map", "map-independent", "character", "drawing", "text"]);
-  assert.deepEqual(linkedDirectPropertyItemIds(items, linked, "character-roofs", "visible"), ["source", "source-independent", "character", "drawing", "text"]);
-  assert.deepEqual(linkedDirectPropertyItemIds(items, linked, "text-roofs", "locked"), []);
-  assert.equal(linked.inheritance?.virtual?.["character-roofs"]?.mode, "pass-through");
-  assert.deepEqual(linked.inheritance?.virtual?.["map-roofs"], { mode: "independent", enforce: { visible: false } });
+  const allLinked = ["source", "source-independent", "map", "map-independent", "character", "drawing", "text"];
+  for (const property of ["locked", "visible", "disableHit", "transparent"] as const) {
+    assert.deepEqual(linkedDirectPropertyItemIds(items, linked, "roofs", property), allLinked);
+  }
+  assert.deepEqual(linkedDirectPropertyItemIds(items, linked, "character-roofs", "visible"), allLinked);
+  assert.deepEqual(linkedDirectPropertyItemIds(items, linked, "text-roofs", "locked"), allLinked);
+  assert.deepEqual(getGroupEffectiveInstructions(linked, "MAP", "map-roofs"), {});
 });
 
 test("derives native direct targets from current inheritance eligibility", () => {
   const items = [item("unassigned"), item("independent", undefined, true), item("roof", "roofs")];
   assert.deepEqual(directNativeItemIds(items, state, "PROP"), ["unassigned"]);
+});
+
+test("linked and dependent virtual layers block native cascading inheritance", () => {
+  const boundary: VirtualLayerState = {
+    version: 2,
+    layers: [
+      { id: "linked", name: "Shared", obrLayer: "PROP", order: 0 },
+      { id: "linked-map", name: "shared", obrLayer: "MAP", order: 0 },
+      { id: "dependent", name: "House: floor 1/Lights", obrLayer: "PROP", order: 1 },
+      { id: "ordinary", name: "Ordinary", obrLayer: "PROP", order: 2 },
+    ],
+    inheritance: { native: { PROP: { locked: true } } },
+  };
+  assert.deepEqual(getGroupEffectiveInstructions(boundary, "PROP", "linked"), {});
+  assert.deepEqual(getGroupEffectiveInstructions(boundary, "PROP", "dependent"), {});
+  assert.deepEqual(getGroupEffectiveInstructions(boundary, "PROP", "ordinary"), { locked: true });
+  const items = [item("linked", "linked"), item("dependent", "dependent"), item("ordinary", "ordinary")];
+  assert.deepEqual(directNativeItemIds(items, boundary, "PROP"), ["ordinary"]);
+  assert.deepEqual(getEffectiveItemRule(items[0], boundary), {});
+  assert.deepEqual(getEffectiveItemRule(items[1], boundary), { transparent: true });
+  assert.deepEqual(getEffectiveItemRule(items[2], boundary), { locked: true });
 });
 
 test("locally enforced transparency reaches linked peers in both directions and survives enforcement", () => {
@@ -283,7 +303,7 @@ test("locally enforced transparency reaches linked peers in both directions and 
   for (const transparent of [true, false]) {
     linked.inheritance.virtual!.roofs = { mode: "independent", enforce: { transparent } };
     const ids = linkedDirectPropertyItemIds(items, linked, "roofs", "transparent");
-    assert.deepEqual(ids, ["peer"]);
+    assert.deepEqual(ids, ["source", "peer", "own-rule", "native-rule"]);
     for (const target of items.filter((target) => ids.includes(target.id))) {
       if (transparent) activateTransparency(target, "direct");
       else restoreTransparency(target);
@@ -292,7 +312,7 @@ test("locally enforced transparency reaches linked peers in both directions and 
     assert.equal(calculateInheritanceUpdates(items, linked).has("peer"), false);
   }
   assert.deepEqual(items[1].scale, originalScale);
-  assert.deepEqual(linkedDirectPropertyItemIds(items, linked, "text-roofs", "transparent"), []);
+  assert.deepEqual(linkedDirectPropertyItemIds(items, linked, "text-roofs", "transparent"), ["source", "peer", "own-rule", "native-rule"]);
 });
 
 test("creating and renaming linked layers never copies inheritance configuration", () => {
@@ -300,7 +320,8 @@ test("creating and renaming linked layers never copies inheritance configuration
   assert.equal(created.inheritance?.virtual?.["new-roofs"], undefined);
   const renamed = renameVirtualLayer(createVirtualLayer(state, "MAP", "Other", "other"), "other", "Roofs");
   assert.equal(renamed.inheritance?.virtual?.other, undefined);
-  assert.deepEqual(renamed.inheritance?.virtual?.roofs, state.inheritance?.virtual?.roofs);
+  assert.equal(created.inheritance?.virtual?.roofs, undefined);
+  assert.equal(renamed.inheritance?.virtual?.roofs, undefined);
 });
 
 test("Tomb switches synchronize enforced Props and direct Maps with an unmatched third state", () => {

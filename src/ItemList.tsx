@@ -39,6 +39,7 @@ import { InheritanceStateIcon } from "./InheritanceStateIcon";
 import { isItemTransparent } from "./transparentState";
 import { OpaqueIcon, TransparentIcon } from "./icons/other/TransparencyIcons";
 import { InheritanceMenu } from "./InheritanceMenu";
+import { getInheritanceBoundary, inheritanceBoundaryDescription } from "./inheritanceBoundary";
 import { useLayerDisplaySettings } from "./layerSettings";
 
 const NATIVE_LAYER_HEADER_HEIGHT = 40;
@@ -129,11 +130,12 @@ function LayerPropertyControls({ items, scope, fog = false }: { items: Item[]; s
   const [inheritanceAnchor, setInheritanceAnchor] = useState<HTMLElement | null>(null);
   const parentRule = scope.kind === "group" ? getNativeRule(state, scope.layer) : {};
   const config = scope.kind === "group" ? getGroupInheritance(state, scope.layer, scope.groupId) : undefined;
+  const boundary = scope.kind === "group" ? getInheritanceBoundary(state, scope.groupId) : undefined;
   const localRule = scope.kind === "native" ? getNativeRule(state, scope.layer) : config?.mode === "independent" ? config.enforce : {};
   const effectiveRule = scope.kind === "group" && config?.mode === "pass-through" ? parentRule : localRule;
   const eligible = items.filter((item) => {
     if (getItemRule(item)) return false;
-    return scope.kind === "group" || getGroupInheritance(state, item.layer, resolveGroupId(item, state)).mode === "pass-through";
+    return scope.kind === "group" || (!getInheritanceBoundary(state, resolveGroupId(item, state)) && getGroupInheritance(state, item.layer, resolveGroupId(item, state)).mode === "pass-through");
   });
   const aggregate = getLayerPropertyState(eligible.map(itemState));
   const { mixedDisableHit, mixedLocked, mixedVisible } = aggregate;
@@ -145,7 +147,7 @@ function LayerPropertyControls({ items, scope, fog = false }: { items: Item[]; s
     ? displayed.visible ? "Cut all" : "Uncut all"
     : displayed.visible ? "Hide all" : "Show all";
   const independent = config?.mode === "independent";
-  const inheritanceState = inheritanceVisualState(scope.kind === "native" ? "native" : "virtual", hasInstructions(effectiveRule), independent);
+  const inheritanceState = boundary ? "blocked-virtual-layer" : inheritanceVisualState(scope.kind === "native" ? "native" : "virtual", hasInstructions(effectiveRule), independent);
   const inheritanceColor = inheritanceState === "enabled" ? "warning" : inheritanceState === "disabled" ? "default" : "error";
   const isReceived = (property: StatefulProperty) => scope.kind === "group" && config?.mode === "pass-through" && Object.prototype.hasOwnProperty.call(parentRule, property);
   const isEnforced = (property: StatefulProperty) => Object.prototype.hasOwnProperty.call(effectiveRule, property);
@@ -157,8 +159,8 @@ function LayerPropertyControls({ items, scope, fog = false }: { items: Item[]; s
   const disabledSx = (property: StatefulProperty) => isReceived(property) ? { "&.Mui-disabled": { color: "warning.main" } } : undefined;
   const setProperty = (property: StatefulProperty, value: boolean) => setScopeProperty(scope, property, value);
   return <>
-    {features.manageInheritance && <><Tooltip title="Configure inheritance"><IconButton size="small" aria-label="Configure inheritance" color={inheritanceColor} onClick={(event) => { event.stopPropagation(); setInheritanceAnchor(event.currentTarget); }}><InheritanceStateIcon state={inheritanceState} fontSize="small" /></IconButton></Tooltip>
-    <InheritanceMenu anchorEl={inheritanceAnchor} scope={scope} config={config} enforce={localRule} displayed={displayed} features={features} onClose={() => setInheritanceAnchor(null)} /></>}
+    {features.manageInheritance && <><Tooltip title={boundary ? inheritanceBoundaryDescription(boundary) : "Configure inheritance"}><IconButton size="small" aria-label={boundary ? "Inheritance boundary" : "Configure inheritance"} color={inheritanceColor} onClick={(event) => { event.stopPropagation(); setInheritanceAnchor(event.currentTarget); }}><InheritanceStateIcon state={inheritanceState} fontSize="small" /></IconButton></Tooltip>
+    <InheritanceMenu anchorEl={inheritanceAnchor} scope={scope} config={config} enforce={localRule} displayed={displayed} features={features} boundary={boundary} onClose={() => setInheritanceAnchor(null)} /></>}
     {features.transparency && <Tooltip title={displayed.transparent ? "Restore all" : "Make all transparent"}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" aria-label={displayed.transparent ? "Restore all" : "Make all transparent"} color={transparencyColor} disabled={disabled("transparent")} sx={disabledSx("transparent")} onClick={(event) => { event.stopPropagation(); void setProperty("transparent", !displayed.transparent); }}>{displayed.transparent ? <TransparentIcon fontSize="small" /> : <OpaqueIcon fontSize="small" />}</IconButton></Box></Tooltip>}
     {features.interaction && <Tooltip title={displayed.disableHit ? "Enable clicks for all" : "Disable clicks for all"}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" aria-label={displayed.disableHit ? "Enable clicks for all" : "Disable clicks for all"} color={stateColor("disableHit", mixedDisableHit)} disabled={disabled("disableHit")} sx={disabledSx("disableHit")} onClick={(event) => { event.stopPropagation(); void setProperty("disableHit", !displayed.disableHit); }}>{displayed.disableHit ? <ClickThroughIcon fontSize="small" /> : <ClickableIcon fontSize="small" />}</IconButton></Box></Tooltip>}
     {features.locked && <Tooltip title={displayed.locked ? "Unlock all" : "Lock all"}><Box component="span" sx={{ display: "inline-flex" }}><IconButton size="small" color={stateColor("locked", mixedLocked)} disabled={disabled("locked")} sx={disabledSx("locked")} onClick={(event) => { event.stopPropagation(); void setProperty("locked", !displayed.locked); }}>{displayed.locked ? <LockedIcon fontSize="small" /> : <UnlockIcon fontSize="small" />}</IconButton></Box></Tooltip>}

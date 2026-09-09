@@ -16,7 +16,7 @@ import { useOwlbearStore } from "./useOwlbearStore";
 import { itemHasPermission } from "./hasPermission";
 import { SettingsPanel } from "./SettingsPanel";
 import { StateSwitcher } from "./StateSwitcher";
-import { statefulVirtualLayerGroups } from "./virtualLayers";
+import { resolveParticipationModel } from "./participation";
 import { ResizeHandles } from "./ResizeHandles";
 import { clampDimension, DEFAULT_OUTLINER_LAYOUT_SETTINGS, MAX_OUTLINER_HEIGHT, MAX_OUTLINER_WIDTH, readOutlinerLayoutSettings, type MinimizedOrientation, type OutlinerDimensions, type OutlinerLayoutSettings, writeOutlinerLayoutSettings } from "./outlinerLayout";
 import { MINIMIZED_LAYOUT_METADATA_KEY } from "./constants";
@@ -28,7 +28,7 @@ export function Outliner() {
   const virtualLayersReady = useOwlbearStore((state) => state.virtualLayersReady);
   const sceneMinimizedLayout = useOwlbearStore((state) => state.sceneMinimizedLayout);
   const setSceneMinimizedLayout = useOwlbearStore((state) => state.setSceneMinimizedLayout);
-  const hasStateGroups = useMemo(() => statefulVirtualLayerGroups(virtualLayers).length > 0, [virtualLayers]);
+  const hasStateGroups = useMemo(() => resolveParticipationModel(virtualLayers).stateGroups.length > 0, [virtualLayers]);
   const savedLayout = useMemo(() => readOutlinerLayoutSettings(), []);
   const [layout, setLayout] = useState<OutlinerLayoutSettings>(savedLayout ?? DEFAULT_OUTLINER_LAYOUT_SETTINGS);
   const layoutRef = useRef(layout);

@@ -28,7 +28,6 @@ import { SendMenuButton } from "./SendMenuButton";
 import { getItemParentRule, getItemRule, hasInstructions, itemInheritanceLabel, inheritanceVisualState, itemState, type StatefulProperty } from "./stateInheritance";
 import { setItemTransparency, setItemVisibility, toggleItemInheritance } from "./virtualLayerService";
 import { InheritanceStateIcon } from "./InheritanceStateIcon";
-import { isItemTransparent } from "./transparentState";
 import { OpaqueIcon, TransparentIcon } from "./icons/other/TransparencyIcons";
 import { useLayerDisplaySettings } from "./layerSettings";
 
@@ -73,7 +72,6 @@ export const ItemListItem = memo(function ({
   const parentRule = getItemParentRule(item, virtualLayers);
   const independent = Boolean(localRule);
   const effectiveRule = independent ? {} : parentRule;
-  const transparent = isItemTransparent(item);
   const features = useLayerDisplaySettings().features;
 
   const [ref, inView] = useInView();
@@ -92,7 +90,7 @@ export const ItemListItem = memo(function ({
     focusWithin,
     layerMenuOpen: sendMenuOpen,
     inheritanceActive: independent || hasInstructions(effectiveRule),
-    transparent,
+    transparent: displayed.transparent,
     disableHit: displayed.disableHit,
     locked: displayed.locked,
     visible: displayed.visible,

@@ -62,9 +62,9 @@ test("derives a destination group's direct transparency for item moves", () => {
   activateTransparency(night, "direct");
   assert.equal(directGroupTransparency([day, night], family, "PROP", "day", new Set([night.id])), false);
   assert.equal(directGroupTransparency([day, night], family, "PROP", "night", new Set([day.id])), true);
-  assert.equal(directGroupTransparency([day], family, "PROP", "night"), true);
+  assert.equal(directGroupTransparency([day], family, "PROP", "night"), undefined);
   activateTransparency(day, "direct");
-  assert.equal(directGroupTransparency([day], family, "PROP", "night"), false);
+  assert.equal(directGroupTransparency([day], family, "PROP", "night"), undefined);
 });
 
 test("migrates legacy full rules into version-2 enforcement records", () => {

@@ -13,16 +13,12 @@ import {
   createVirtualLayer,
   deleteVirtualLayer,
   getAssignmentId,
-  mutuallyExclusiveVirtualLayers,
   parseVirtualLayerState,
   renameVirtualLayer,
   reorderVirtualLayer,
   reorderStackingGroup,
-  reorderStatefulVirtualLayerState,
   stackGroup,
-  statefulVirtualLayerGroups,
   stateFromMetadata,
-  withStateSelection,
   type EnforcedItemState,
   type StatefulProperty,
   type VirtualInheritance,
@@ -45,6 +41,7 @@ import { activateTransparency, getTransparentState, needsTransparencyEnforcement
 import { updateShadowedLocalItemProperty } from "./localItemState";
 import { applyEffectiveItemState } from "./effectiveItemState";
 import { getInheritanceBoundary } from "./inheritanceBoundary";
+import { reorderResolvedStateGroup, withStateGroupSelection } from "./participation";
 
 let queue: Promise<void> = Promise.resolve();
 let writing = false;
@@ -256,16 +253,6 @@ export function setScopeProperty(scope: RuleScope, property: StatefulProperty, v
       } else if (!Object.prototype.hasOwnProperty.call(getGroupEffectiveInstructions(state, scope.layer, scope.groupId), property)) {
         directGroupItemIds(items, state, scope.layer, scope.groupId).forEach((id) => directValues.set(id, value));
       }
-      if (property === "transparent" && !value && scope.groupId !== "__unassigned__") {
-        for (const sibling of mutuallyExclusiveVirtualLayers(state, scope.groupId)) {
-          const siblingScope = { kind: "group" as const, layer: sibling.obrLayer, groupId: sibling.id };
-          const siblingConfig = getGroupInheritance(state, sibling.obrLayer, sibling.id);
-          if (siblingConfig.mode === "independent" && Object.prototype.hasOwnProperty.call(siblingConfig.enforce, "transparent")) {
-            next = withGroupInheritance(next, siblingScope, { ...siblingConfig, enforce: { ...siblingConfig.enforce, transparent: true } });
-          }
-          linkedDirectPropertyItemIds(items, state, sibling.id, "transparent").forEach((id) => directValues.set(id, true));
-        }
-      }
     }
     if (next !== state) await setState(next);
     const restores = new Map<string, boolean>();
@@ -413,7 +400,7 @@ export function setItemTransparency(item: Item, value: boolean) {
 export function moveStatefulVirtualLayerState(groupName: string, activeState: string, overState: string) {
   return serialized(async () => {
     const state = await getState();
-    const next = reorderStatefulVirtualLayerState(state, groupName, activeState, overState);
+    const next = reorderResolvedStateGroup(state, groupName, activeState, overState);
     if (next !== state) await setState(next);
   });
 }
@@ -427,23 +414,10 @@ export function setItemVisibility(item: Item, value: boolean) {
   });
 }
 
-export function setStatefulVirtualLayerSelection(groupName: string, stateName: string | null) {
+export function setStatefulVirtualLayerSelection(groupId: string, stateName: string | null) {
   return serialized(async () => {
     const state = await getState();
-    const groupKey = groupName.trim().toLocaleLowerCase();
-    if (!Object.prototype.hasOwnProperty.call(state.stateSelections ?? {}, groupKey)) {
-      // Before state participation was explicit, the switcher stored inactive
-      // states as direct transparency. Reclassify that legacy data once, before
-      // the first explicit selection, so it is not mistaken for local intent.
-      const group = statefulVirtualLayerGroups(state).find((entry) => entry.name.toLocaleLowerCase() === groupKey);
-      const layerIds = new Set(group?.states.flatMap((entry) => entry.layers.map((layer) => layer.id)) ?? []);
-      const items = await OBR.scene.items.getItems((item) => layerIds.has(getAssignmentId(item) ?? ""));
-      const legacyIds = items.filter((item) => getTransparentState(item)?.source === "direct").map((item) => item.id);
-      if (legacyIds.length) await OBR.scene.items.updateItems(legacyIds, (draft) => {
-        for (const item of draft) activateTransparency(item, "inherited");
-      }, true);
-    }
-    const next = withStateSelection(state, groupName, stateName);
+    const next = withStateGroupSelection(state, groupId, stateName);
     await setState(next);
     await enforceStateInheritance(next);
   });

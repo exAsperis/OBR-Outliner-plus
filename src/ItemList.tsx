@@ -21,14 +21,14 @@ import ListItemText from "@mui/material/ListItemText";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import type { Item } from "@owlbear-rodeo/sdk";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ItemListItem } from "./ItemListItem";
 import { LayerIcon } from "./LayerIcon";
 import { SortableItem } from "./SortableItem";
 import { capitalize } from "./helpers";
 import type { StackOperation } from "./stacking";
 import { useOwlbearStore } from "./useOwlbearStore";
-import { isLinkedVirtualLayer, mutuallyExclusiveVirtualLayers, parseStatefulVirtualLayerName, resolveGroupId, UNASSIGNED_ID, type VirtualLayerDefinition } from "./virtualLayers";
+import { isLinkedVirtualLayer, parseStatefulVirtualLayerName, resolveGroupId, UNASSIGNED_ID, type VirtualLayerDefinition } from "./virtualLayers";
 import type { DropPosition } from "./dragPosition";
 import { SendMenuButton } from "./SendMenuButton";
 import { getLayerPropertyState } from "./layerPropertyState";
@@ -36,11 +36,11 @@ import { captureAggregateState, getGroupInheritance, getItemRule, getNativeRule,
 import { setScopeProperty, type RuleScope } from "./virtualLayerService";
 import { OverflowTooltipText } from "./OverflowTooltipText";
 import { InheritanceStateIcon } from "./InheritanceStateIcon";
-import { isItemTransparent } from "./transparentState";
 import { OpaqueIcon, TransparentIcon } from "./icons/other/TransparencyIcons";
 import { InheritanceMenu } from "./InheritanceMenu";
 import { getInheritanceBoundary, inheritanceBoundaryDescription } from "./inheritanceBoundary";
 import { useLayerDisplaySettings } from "./layerSettings";
+import { participationDescription, resolveParticipationModel } from "./participation";
 
 const NATIVE_LAYER_HEADER_HEIGHT = 40;
 
@@ -105,14 +105,17 @@ function Group({ definition, items, role, searching, groupDropPosition, onRename
   const [focusWithin, setFocusWithin] = useState(false);
   const [sendMenuOpen, setSendMenuOpen] = useState(false);
   const selected = useOwlbearStore((state) => items.some((item) => state.selection?.includes(item.id)));
-  const linked = useOwlbearStore((state) => isLinkedVirtualLayer(state.virtualLayers, definition.id));
+  const virtualLayers = useOwlbearStore((state) => state.virtualLayers);
+  const model = useMemo(() => resolveParticipationModel(virtualLayers), [virtualLayers]);
+  const linked = isLinkedVirtualLayer(virtualLayers, definition.id);
+  const participation = model.byDefinitionId.get(definition.id);
   const unassigned = definition.id === UNASSIGNED_ID;
   const groupHeading = `${definition.name} [${items.length}]`;
   const statefulName = !unassigned && parseStatefulVirtualLayerName(definition.name);
   const showNonStateActions = hovering || focusWithin || sendMenuOpen;
   const row = <ListItemButton dense onClick={() => setOpen(!open)} aria-expanded={open} onPointerOver={(event) => { if (event.pointerType === "mouse") setHovering(true); }} onPointerLeave={(event) => { if (event.pointerType === "mouse") setHovering(false); }} onFocus={() => setFocusWithin(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setFocusWithin(false); }} sx={{ height: `${NATIVE_LAYER_HEADER_HEIGHT}px`, bgcolor: "background.default", color: selected ? "primary.main" : undefined, borderLeft: "3px solid", borderLeftColor: selected ? "primary.main" : "transparent" }}>
-    <ListItemIcon sx={{ color: selected ? "primary.main" : "text.secondary", minWidth: "28px", "& svg": { fontSize: 16 } }}>{linked ? <Tooltip title="Linked virtual layer"><LinkIcon aria-label="Linked virtual layer" /></Tooltip> : <VirtualLayerIcon aria-label="Virtual layer" />}</ListItemIcon>
-    <ListItemText primary={<OverflowTooltipText text={groupHeading}>{statefulName ? <>{statefulName.group} : <Box component="span" sx={{ color: "info.main" }}>{statefulName.state}</Box> [{items.length}]</> : groupHeading}</OverflowTooltipText>} sx={{ minWidth: 0 }} primaryTypographyProps={{ fontStyle: "italic" }} />
+    <ListItemIcon sx={{ color: participation && !participation.participating ? "warning.main" : selected ? "primary.main" : "text.secondary", minWidth: "28px", "& svg": { fontSize: 16 } }}><Tooltip title={participation ? participationDescription(participation) : linked ? "Linked virtual layer" : "Virtual layer"}>{linked ? <LinkIcon aria-label="Linked virtual layer" /> : <VirtualLayerIcon aria-label="Virtual layer" />}</Tooltip></ListItemIcon>
+    <ListItemText primary={<OverflowTooltipText text={`${groupHeading}${participation && !participation.participating ? " — suppressed" : ""}`}>{statefulName ? <>{statefulName.group} : <Box component="span" sx={{ color: "info.main" }}>{statefulName.state}</Box> [{items.length}]</> : groupHeading}{participation && !participation.participating && <Box component="span" sx={{ color: "warning.main" }}> — suppressed</Box>}</OverflowTooltipText>} sx={{ minWidth: 0 }} primaryTypographyProps={{ fontStyle: "italic" }} />
     {role === "GM" && <Stack direction="row" alignItems="center" flexShrink={0}>
       {showNonStateActions && <>{!unassigned && <><Tooltip title="Edit"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onRename(definition); }}><EditIcon fontSize="small" /></IconButton></Tooltip><Tooltip title="Delete"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(definition); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip></>}<SendMenuButton itemIds={items.map((item) => item.id)} allowStackWhenEmpty onStack={(operation) => onGroupStack(definition.obrLayer, definition.id, operation)} confirmLayerMove={definition.name} onOpenChange={setSendMenuOpen} /></>}
       <LayerPropertyControls items={items} scope={{ kind: "group", layer: definition.obrLayer, groupId: definition.id }} fog={definition.obrLayer === "FOG"} />
@@ -137,10 +140,11 @@ function LayerPropertyControls({ items, scope, fog = false }: { items: Item[]; s
     if (getItemRule(item)) return false;
     return scope.kind === "group" || (!getInheritanceBoundary(state, resolveGroupId(item, state)) && getGroupInheritance(state, item.layer, resolveGroupId(item, state)).mode === "pass-through");
   });
-  const aggregate = getLayerPropertyState(eligible.map(itemState));
+  const localStates = eligible.map(itemState);
+  const aggregate = getLayerPropertyState(localStates);
   const { mixedDisableHit, mixedLocked, mixedVisible } = aggregate;
-  const allTransparent = eligible.length > 0 && eligible.every(isItemTransparent);
-  const mixedTransparent = eligible.some(isItemTransparent) && !allTransparent;
+  const allTransparent = localStates.length > 0 && localStates.every((item) => item.transparent);
+  const mixedTransparent = localStates.some((item) => item.transparent) && !allTransparent;
   const aggregateState = captureAggregateState(eligible);
   const displayed = { ...aggregateState, ...effectiveRule };
   const visibilityAction = fog
@@ -152,9 +156,7 @@ function LayerPropertyControls({ items, scope, fog = false }: { items: Item[]; s
   const isReceived = (property: StatefulProperty) => scope.kind === "group" && config?.mode === "pass-through" && Object.prototype.hasOwnProperty.call(parentRule, property);
   const isEnforced = (property: StatefulProperty) => Object.prototype.hasOwnProperty.call(effectiveRule, property);
   const stateColor = (property: StatefulProperty, mixed: boolean) => isEnforced(property) ? "warning" : mixed ? "info" : "default";
-  const transparencyColor = scope.kind === "group" && mutuallyExclusiveVirtualLayers(state, scope.groupId).length
-    ? "success"
-    : stateColor("transparent", mixedTransparent);
+  const transparencyColor = stateColor("transparent", mixedTransparent);
   const disabled = (property: StatefulProperty) => isReceived(property) || (!isEnforced(property) && eligible.length === 0);
   const disabledSx = (property: StatefulProperty) => isReceived(property) ? { "&.Mui-disabled": { color: "warning.main" } } : undefined;
   const setProperty = (property: StatefulProperty, value: boolean) => setScopeProperty(scope, property, value);

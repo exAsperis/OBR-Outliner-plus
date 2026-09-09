@@ -10,6 +10,8 @@ export interface StoredLocalItemState {
   values: Partial<InheritedItemState>;
 }
 
+type LocalStateItem = Pick<Item, "disableHit" | "locked" | "visible" | "metadata">;
+
 export function parseLocalItemState(value: unknown): StoredLocalItemState | undefined {
   if (!value || typeof value !== "object" || (value as { version?: unknown }).version !== 1) return undefined;
   const raw = (value as { values?: unknown }).values;
@@ -26,14 +28,14 @@ export function getStoredLocalItemState(item: Pick<Item, "metadata">) {
   return parseLocalItemState(item.metadata[ITEM_LOCAL_STATE_METADATA_KEY]);
 }
 
-export function readUnshadowedLocalProperty(item: Item, property: StatefulProperty) {
+export function readUnshadowedLocalProperty(item: LocalStateItem, property: StatefulProperty) {
   if (property === "transparent") return getTransparentState(item)?.source === "direct";
   if (property === "visible") return getItemVisible(item);
   if (property === "disableHit") return item.disableHit === true;
   return item.locked;
 }
 
-export function getLocalItemProperty(item: Item, property: StatefulProperty) {
+export function getLocalItemProperty(item: LocalStateItem, property: StatefulProperty) {
   return getStoredLocalItemState(item)?.values[property] ?? readUnshadowedLocalProperty(item, property);
 }
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveParticipationModel, withStateGroupSelection } from "../src/participation.ts";
+import { participationDescription, reorderResolvedStateGroup, resolveParticipationModel, withStateGroupSelection } from "../src/participation.ts";
 import type { VirtualLayerDefinition, VirtualLayerState } from "../src/virtualLayers.ts";
 
 const layer = (id: string, name: string, obrLayer: VirtualLayerDefinition["obrLayer"] = "PROP", order = 0): VirtualLayerDefinition =>
@@ -93,4 +93,12 @@ test("an unselected layer remains suppressed even when its guardian participates
   assert.deepEqual(model.byDefinitionId.get("lights-off"), {
     participating: false, locallySelected: false, guardianParticipating: true, reasons: ["unselected"],
   });
+  assert.equal(participationDescription(model.byDefinitionId.get("lights-off")!), "Suppressed — state is unselected");
+});
+
+test("reorders a guardian-scoped state group without affecting sibling groups", () => {
+  const reordered = reorderResolvedStateGroup(houseState(), "house: floor 1/lights", "off", "on");
+  assert.deepEqual(reordered.stateOrders, { "house: floor 1/lights": ["off", "on"] });
+  assert.deepEqual(resolveParticipationModel(reordered).stateGroups.find((group) => group.id === "house: floor 1/lights")
+    ?.states.map((state) => state.name), ["off", "on"]);
 });

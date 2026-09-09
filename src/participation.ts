@@ -77,6 +77,14 @@ export function resolveParticipationModel(state: VirtualLayerState): ResolvedPar
     }
     group.states.push({ id: logical.id, name: logical.stateName, layers: logical.definitions });
   }
+  for (const group of groups.values()) {
+    const order = state.stateOrders?.[group.id] ?? [];
+    const positions = new Map(order.map((name, index) => [name.toLocaleLowerCase(), index]));
+    group.states = group.states.map((entry, index) => ({ entry, index }))
+      .sort((a, b) => (positions.get(a.entry.name.toLocaleLowerCase()) ?? order.length + a.index) -
+        (positions.get(b.entry.name.toLocaleLowerCase()) ?? order.length + b.index))
+      .map(({ entry }) => entry);
+  }
 
   const byLogicalId = new Map<string, VirtualLayerParticipation>();
   const resolve = (logical: ResolvedLogicalVirtualLayer): VirtualLayerParticipation => {
@@ -118,4 +126,22 @@ export function withStateGroupSelection(state: VirtualLayerState, groupId: strin
     ...state.stateSelections,
     [normalizedGroup]: stateName === null ? null : stateName.trim().toLocaleLowerCase(),
   } };
+}
+
+export function reorderResolvedStateGroup(state: VirtualLayerState, groupId: string, activeState: string, overState: string): VirtualLayerState {
+  const group = resolveParticipationModel(state).stateGroups.find((entry) => entry.id === groupId.toLocaleLowerCase());
+  if (!group) return state;
+  const order = group.states.map((entry) => entry.name.toLocaleLowerCase());
+  const from = order.indexOf(activeState.trim().toLocaleLowerCase());
+  const to = order.indexOf(overState.trim().toLocaleLowerCase());
+  if (from < 0 || to < 0 || from === to) return state;
+  order.splice(to, 0, order.splice(from, 1)[0]);
+  return { ...state, stateOrders: { ...state.stateOrders, [group.id]: order } };
+}
+
+export function participationDescription(participation: VirtualLayerParticipation) {
+  if (participation.participating) return "Participating";
+  if (participation.reasons.includes("guardian-missing")) return "Suppressed — guardian layer is missing";
+  if (participation.reasons.includes("guardian-suppressed")) return "Suppressed — guardian is not participating";
+  return "Suppressed — state is unselected";
 }

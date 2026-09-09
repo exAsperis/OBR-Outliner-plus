@@ -1,7 +1,7 @@
 import type { Item } from "@owlbear-rodeo/sdk";
-import { linkedVirtualLayers, mutuallyExclusiveVirtualLayers, resolveGroupId, STATEFUL_PROPERTIES, type EnforcedItemState, type InheritedItemState, type StatefulProperty, type VirtualInheritance, type VirtualLayerState } from "./virtualLayers.ts";
+import { linkedVirtualLayers, resolveGroupId, STATEFUL_PROPERTIES, type EnforcedItemState, type InheritedItemState, type StatefulProperty, type VirtualInheritance, type VirtualLayerState } from "./virtualLayers.ts";
 import { getItemVisible, getTransparentState, isItemTransparent, needsTransparencyEnforcement } from "./transparentState.ts";
-import { getStoredLocalItemState } from "./localItemState.ts";
+import { getLocalItemProperty, getStoredLocalItemState } from "./localItemState.ts";
 import { resolveParticipationModel, type ResolvedParticipationModel } from "./participation.ts";
 import { getInheritanceBoundary } from "./inheritanceBoundary.ts";
 
@@ -17,7 +17,8 @@ export interface ItemInheritanceState { independent: true; legacy: boolean }
 export interface InheritanceUpdate { instructions?: EnforcedItemState; preserveTransparency?: boolean }
 
 export function itemState(item: Pick<Item, "disableHit" | "locked" | "visible" | "metadata">): InheritedItemState {
-  return { disableHit: item.disableHit === true, locked: item.locked, visible: getItemVisible(item), transparent: isItemTransparent(item) };
+  return { disableHit: getLocalItemProperty(item, "disableHit"), locked: getLocalItemProperty(item, "locked"),
+    visible: getLocalItemProperty(item, "visible"), transparent: getLocalItemProperty(item, "transparent") };
 }
 
 export function parseItemInheritance(value: unknown): ItemInheritanceState | undefined {
@@ -104,11 +105,7 @@ export function directGroupTransparency(items: Item[], state: VirtualLayerState,
     : linkedDirectPropertyItemIds(items, state, groupId, "transparent");
   const candidates = items.filter((item) => ids.includes(item.id) && !excluding.has(item.id));
   if (candidates.length) return candidates.every(isItemTransparent);
-  if (groupId === "__unassigned__") return undefined;
-  const siblingIds = new Set(mutuallyExclusiveVirtualLayers(state, groupId).map((sibling) => sibling.id));
-  const siblingItems = items.filter((item) => siblingIds.has(resolveGroupId(item, state)) && !getItemRule(item));
-  if (!siblingItems.length) return undefined;
-  return siblingItems.some((item) => !isItemTransparent(item));
+  return undefined;
 }
 
 export function withLinkedGroupProperty(state: VirtualLayerState, sourceId: string, property: StatefulProperty, value: boolean): VirtualLayerState {
@@ -168,6 +165,8 @@ export function inheritanceVisualState(level: "native" | "virtual" | "item", act
 
 export function captureAggregateState(items: Array<Pick<Item, "disableHit" | "locked" | "visible" | "metadata">>): InheritedItemState {
   if (!items.length) return EMPTY_INHERITED_STATE;
-  return { disableHit: items.every((item) => item.disableHit === true), locked: items.every((item) => item.locked),
-    visible: items.every((item) => getItemVisible(item)), transparent: items.every((item) => isItemTransparent(item)) };
+  return { disableHit: items.every((item) => getLocalItemProperty(item, "disableHit")),
+    locked: items.every((item) => getLocalItemProperty(item, "locked")),
+    visible: items.every((item) => getLocalItemProperty(item, "visible")),
+    transparent: items.every((item) => getLocalItemProperty(item, "transparent")) };
 }

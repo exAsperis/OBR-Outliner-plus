@@ -1,7 +1,8 @@
 import OBR from "@owlbear-rodeo/sdk";
 import { EXTENSION_ID } from "./constants";
 import { hasBoundaryViolation, stateFromMetadata } from "./virtualLayers";
-import { isVirtualLayerWriteInFlight, normalizeLayers } from "./virtualLayerService";
+import { enforceStateInheritance, isVirtualLayerWriteInFlight, normalizeLayers } from "./virtualLayerService";
+import { EXTENSION_VERSION } from "./version";
 
 const SEND_CONTEXT_MENU_ID = `${EXTENSION_ID}/send`;
 
@@ -16,11 +17,11 @@ async function reconcile() {
   reconcileQueued = true;
   try {
     const state = stateFromMetadata(await OBR.scene.getMetadata());
-    if (!state.layers.length) return;
     const items = await OBR.scene.items.getItems();
     const layers = [...new Set(state.layers.map((entry) => entry.obrLayer))]
       .filter((layer) => hasBoundaryViolation(items, state, layer));
     if (layers.length) await normalizeLayers(layers, state);
+    await enforceStateInheritance(state);
   } finally { reconcileQueued = false; }
 }
 
@@ -40,14 +41,14 @@ OBR.onReady(async () => {
     id: SEND_CONTEXT_MENU_ID,
     icons: [
       {
-        icon: "/send.svg?v=0.4.3",
+        icon: `/send.svg?v=${EXTENSION_VERSION}`,
         label: "Send…",
         filter: { permissions: ["UPDATE"], roles: ["GM"] },
       },
     ],
     embed: {
       url: new URL(
-        "/send-menu.html?v=0.4.3",
+        `/send-menu.html?v=${EXTENSION_VERSION}`,
         window.location.origin
       ).href,
       height: 168,

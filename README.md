@@ -19,16 +19,16 @@ ignored by Git so it cannot replace the production manifest accidentally:
 ```json
 {
   "name": "Outliner+ (Local)",
-  "version": "0.4.3-local",
+  "version": "0.6.1-local",
   "manifest_version": 1,
-  "author": "es Asperis",
+  "author": "ex Asperis",
   "icon": "/logo.png",
   "background_url": "/background.html",
   "description": "Local development build of Outliner+",
   "action": {
     "title": "Outliner+ (Local)",
     "icon": "/icon.svg",
-    "popover": "/extension.html?v=0.4.3-local",
+    "popover": "/extension.html?v=0.6.1-local",
     "height": 129,
     "width": 375
   }

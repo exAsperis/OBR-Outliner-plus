@@ -14,10 +14,11 @@ export const OUTLINER_LAYERS_TOP_TO_BOTTOM: Item["layer"][] = [
   "MAP",
 ];
 
-export function getOutlinerLayers(role: "GM" | "PLAYER") {
-  return OUTLINER_LAYERS_TOP_TO_BOTTOM.filter(
-    (layer) => role === "GM" || layer !== "FOG",
-  );
+export const DEFAULT_OUTLINER_LAYERS = OUTLINER_LAYERS_TOP_TO_BOTTOM;
+
+export function getOutlinerLayers(role: "GM" | "PLAYER", enabledLayers: Item["layer"][] = DEFAULT_OUTLINER_LAYERS) {
+  const enabled = new Set(enabledLayers);
+  return OUTLINER_LAYERS_TOP_TO_BOTTOM.filter((layer) => enabled.has(layer) && (role === "GM" || layer !== "FOG"));
 }
 
 export function formatLayerName(layer: Item["layer"]) {

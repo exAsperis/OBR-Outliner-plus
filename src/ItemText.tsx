@@ -3,6 +3,7 @@ import { Item, isShape } from "@owlbear-rodeo/sdk";
 import { useMemo } from "react";
 import { useOwlbearStore } from "./useOwlbearStore";
 import { Textable, capitalize, isTextable, toPlainText } from "./helpers";
+import { OverflowTooltipText } from "./OverflowTooltipText";
 
 export function ItemText({ item }: { item: Item }) {
   const role = useOwlbearStore((state) => state.role);
@@ -21,15 +22,15 @@ export function ItemText({ item }: { item: Item }) {
   }, [item, role]);
 
   if (isTextable(item)) {
-    return <TextableText item={item} name={name} />;
+    return <TextableText item={item} name={name} zIndex={item.zIndex} />;
   } else {
     return (
-      <ListItemText sx={{ minWidth: 0 }} primary={name} primaryTypographyProps={{ noWrap: true }} />
+      <ListItemText sx={{ minWidth: 0 }} primary={<OverflowTooltipText text={name} detail={`Z-index: ${item.zIndex}`} />} />
     );
   }
 }
 
-function TextableText({ item, name }: { item: Textable; name: string }) {
+function TextableText({ item, name, zIndex }: { item: Textable; name: string; zIndex: number }) {
   const plainText = useMemo(() => {
     if (item.text.type === "PLAIN") {
       return item.text.plainText;
@@ -41,8 +42,7 @@ function TextableText({ item, name }: { item: Textable; name: string }) {
   return (
     <ListItemText
       sx={{ minWidth: 0 }}
-      primaryTypographyProps={{ noWrap: true }}
-      primary={plainText || name}
+      primary={<OverflowTooltipText text={plainText || name} detail={`Z-index: ${zIndex}`} />}
     />
   );
 }

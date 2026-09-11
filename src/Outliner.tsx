@@ -3,8 +3,9 @@ import Stack from "@mui/material/Stack";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import HelpIcon from "@mui/icons-material/HelpOutlineRounded";
+import SettingsIcon from "@mui/icons-material/SettingsRounded";
 import OBR from "@owlbear-rodeo/sdk";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SimpleBar from "simplebar-react";
 import "simplebar-react/dist/simplebar.min.css";
 import { Header } from "./Header";
@@ -12,12 +13,21 @@ import { Items } from "./Items";
 import { SearchField } from "./SearchField";
 import { useOwlbearStore } from "./useOwlbearStore";
 import { itemHasPermission } from "./hasPermission";
+import { SettingsPanel } from "./SettingsPanel";
+import { ResizeHandles } from "./ResizeHandles";
+import { DEFAULT_OUTLINER_DIMENSIONS, MAX_OUTLINER_HEIGHT, MIN_OUTLINER_HEIGHT, readOutlinerLayoutSettings, writeOutlinerLayoutSettings, type OutlinerDimensions } from "./outlinerLayout";
 
 export function Outliner() {
   const listRef = useRef<HTMLUListElement>(null);
+  const savedLayout = useMemo(() => readOutlinerLayoutSettings(), []);
+  const [dimensions, setDimensions] = useState(savedLayout?.dimensions ?? DEFAULT_OUTLINER_DIMENSIONS);
+  const dimensionsRef = useRef(dimensions);
+  const initialHeightSet = useRef(Boolean(savedLayout));
+  const updateDimensions = useCallback((next: OutlinerDimensions, persist: boolean) => { dimensionsRef.current = next; setDimensions(next); if (persist) writeOutlinerLayoutSettings({ version: 1, dimensions: next }); }, []);
   useEffect(() => {
-    if (listRef.current && ResizeObserver) {
+    if (listRef.current && ResizeObserver && !initialHeightSet.current) {
       const resizeObserver = new ResizeObserver((entries) => {
+        if (initialHeightSet.current) return;
         if (entries.length > 0) {
           const entry = entries[0];
           // Get the height of the border box
@@ -27,20 +37,25 @@ export function Outliner() {
           // Set a minimum height of 64px
           const listHeight = Math.max(borderHeight, 64);
           // Set the action height to the list height + the card header height + padding
-          OBR.action.setHeight(listHeight + 64 + 16);
+          const height = Math.min(MAX_OUTLINER_HEIGHT, Math.max(MIN_OUTLINER_HEIGHT, listHeight + 64 + 16));
+          initialHeightSet.current = true;
+          const next = { ...dimensionsRef.current, height };
+          void OBR.action.setHeight(height);
+          updateDimensions(next, true);
         }
       });
       resizeObserver.observe(listRef.current);
       return () => {
         resizeObserver.disconnect();
-        // Reset height when unmounted
-        OBR.action.setHeight(129);
       };
     }
-  }, []);
+  }, [updateDimensions]);
+
+  useEffect(() => { void OBR.action.setWidth(dimensions.width); void OBR.action.setHeight(dimensions.height); }, [dimensions.height, dimensions.width]);
 
   const [search, setSearch] = useState("");
   const [searchExpanded, setSearchExpanded] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     // When a common key is pressed ensure the action is performed in OBR
@@ -112,6 +127,7 @@ export function Outliner() {
               expanded={searchExpanded}
               onExpand={setSearchExpanded}
             />
+            <Tooltip title="Settings" disableInteractive><IconButton aria-label="Settings" aria-pressed={settingsOpen} aria-expanded={settingsOpen} aria-controls={settingsOpen ? "outliner-settings" : undefined} onClick={() => setSettingsOpen((open) => !open)}><SettingsIcon sx={{ color: settingsOpen ? "primary.main" : undefined }} /></IconButton></Tooltip>
             <Tooltip title="Help" disableInteractive>
               <IconButton
                 component="a"
@@ -128,9 +144,11 @@ export function Outliner() {
       />
       <SimpleBar style={{ maxHeight: "calc(100vh - 64px)" }}>
         <List ref={listRef} disablePadding>
+          {settingsOpen && <SettingsPanel />}
           <Items search={search} />
         </List>
       </SimpleBar>
+      <ResizeHandles dimensions={dimensions} onResize={(next) => { updateDimensions(next, false); void OBR.action.setWidth(next.width); void OBR.action.setHeight(next.height); }} onCommit={(next) => updateDimensions(next, true)} />
     </Stack>
   );
 }

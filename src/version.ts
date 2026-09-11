@@ -1,1 +1,1 @@
-export const EXTENSION_VERSION = "0.6.1";
+export const EXTENSION_VERSION = "0.6.3";

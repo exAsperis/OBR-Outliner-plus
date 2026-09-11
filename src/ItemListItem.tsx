@@ -157,7 +157,7 @@ export const ItemListItem = memo(function ({
                 />
               </>
             ) : <EmptyActionSlot />}
-            {features.manageInheritance && <Tooltip title={independent ? "Allow inheritance" : "Independent"} disableInteractive><IconButton aria-label={independent ? "Allow inheritance" : "Independent"} color={independent ? "error" : hasInstructions(parentRule) ? "warning" : "default"} size="small" onPointerDown={stopActionEvent} onClick={(event) => handleActionClick(event, () => { void toggleItemInheritance(item); })}><InheritanceStateIcon state={inheritanceVisualState("item", hasInstructions(parentRule), independent)} fontSize="small" /></IconButton></Tooltip>}
+            {features.manageInheritance && <Tooltip title={independent ? "Allow inheritance" : "Block inheritance"} disableInteractive><IconButton aria-label={independent ? "Allow inheritance" : "Block inheritance"} color={independent ? "error" : hasInstructions(parentRule) ? "warning" : "default"} size="small" onPointerDown={stopActionEvent} onClick={(event) => handleActionClick(event, () => { void toggleItemInheritance(item); })}><InheritanceStateIcon state={inheritanceVisualState("item", hasInstructions(parentRule), independent)} fontSize="small" /></IconButton></Tooltip>}
             {features.interaction && (actionVisibility.showDisableHit ? (
               <Tooltip
                 title={displayed.disableHit ? "Enable clicks" : "Disable clicks"}

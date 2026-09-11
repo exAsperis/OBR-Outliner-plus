@@ -37,6 +37,7 @@ import { captureAggregateState, getGroupInheritance, getItemRule, getNativeRule,
 import { InheritanceStateIcon } from "./InheritanceStateIcon";
 import { InheritanceMenu } from "./InheritanceMenu";
 import { setScopeProperty, type RuleScope } from "./virtualLayerService";
+import { formatZIndexRange } from "./zIndexRange";
 
 const NATIVE_LAYER_HEADER_HEIGHT = 40;
 const TOTAL_ROW_HEIGHT = 40;
@@ -103,7 +104,7 @@ function Group({ definition, items, role, searching, groupDropPosition, onRename
   const groupHeading = `${definition.name} [${items.length}]`;
   const row = <ListItemButton dense onClick={() => setOpen(!open)} aria-expanded={open} sx={{ pl: 3, height: `${NATIVE_LAYER_HEADER_HEIGHT}px`, bgcolor: "action.hover", "&:hover": { bgcolor: "action.selected" }, color: selected ? "primary.main" : undefined, borderLeft: "3px solid", borderLeftColor: selected ? "primary.main" : "transparent" }}>
     <ListItemIcon sx={{ color: selected ? "primary.main" : "text.secondary", minWidth: 28, "& svg": { fontSize: 16 } }}><VirtualLayerIcon aria-label="Virtual layer" /></ListItemIcon>
-    <ListItemText primary={<OverflowTooltipText text={groupHeading} />} sx={{ minWidth: 0 }} primaryTypographyProps={{ fontStyle: "italic" }} />
+    <ListItemText primary={<OverflowTooltipText text={definition.name} detail={formatZIndexRange(items.map((item) => item.zIndex))}>{groupHeading}</OverflowTooltipText>} sx={{ minWidth: 0 }} primaryTypographyProps={{ fontStyle: "italic" }} />
     {role === "GM" && <Stack direction="row" alignItems="center" flexShrink={0}>
       {!unassigned && <><Tooltip title="Edit"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onRename(definition); }}><EditIcon fontSize="small" /></IconButton></Tooltip><Tooltip title="Delete"><IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(definition); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip></>}
       <SendMenuButton itemIds={items.map((item) => item.id)} allowStackWhenEmpty onStack={(operation) => onGroupStack(definition.obrLayer, definition.id, operation)} confirmLayerMove={definition.name} />

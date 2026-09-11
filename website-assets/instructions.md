@@ -1,12 +1,24 @@
 # Outliner+ for Owlbear Rodeo
 
-Browse, search, and organize Scene items by layer. Create virtual layers to keep foreground and background elements in a predictable stacking order, and use quick controls for click-through behavior, visibility, locking, and item order.
+Browse, search, and organize Scene items by layer. Create virtual layers to keep foreground and background elements in a predictable stacking order, inherit interaction, locking, and visibility rules, and tailor the Outliner+ view to the current Scene.
 
 ## Overview
 
-Outliner+ builds on the original [Outliner extension](https://extensions.owlbear.rodeo/outliner) with virtual layers, quick controls, and a Locate action.
+Outliner+ builds on the original [Outliner extension](https://extensions.owlbear.rodeo/outliner) with virtual layers, state inheritance, configurable layer visibility, quick controls, and a Locate action.
 
 The Outliner+ panel mirrors the layers and items in the current Scene. Select an item in the panel to select it on the map, double-click an item to center the viewport on it, or use Search to filter the list by name and other item details.
+
+The fixed Total row counts every Scene item. When some native layers are disabled in Settings, it also reports how many items are in those layers so a filtered view is never mistaken for the whole Scene.
+
+## Settings and layer display
+
+Select the Settings gear beside Search and Help to open the control surface. The highlighted gear indicates that Settings is open.
+
+- Manage inheritance enables the shared inheritance system.
+- Interaction, Locked/Unlocked, and Visible/Hidden choose which property controls and inheritance rules are active. Interaction starts disabled; Locked/Unlocked and Visible/Hidden start enabled.
+- Show layers chooses which role-available native Owlbear layers appear in the hierarchy, Search results, virtual layers, and drag destinations. The count beside each layer is its current number of items.
+
+Layer-display and feature preferences are stored in this browser and do not alter Scene contents. Select Hide empty layers to disable every enabled, role-available layer with no items. Select Show all populated layers to enable every disabled, role-available layer that contains items. A bulk button is disabled when there is nothing for it to change.
 
 ## Virtual layers
 
@@ -17,11 +29,31 @@ For example:
 - In the Maps layer, create Ground and Buildings virtual layers so building images remain above ground images.
 - In the Props layer, create Interior and Roof virtual layers so roof props remain above interior props.
 
+Ordinary virtual-layer headings use a dotted-rectangle glyph. Hover a heading to see the layer name without its item count and the range from its lowest to highest z-index.
+
 Drag a virtual-layer heading to change its position, or use its Send menu. Drag items into a virtual layer to assign them to it. Once a native Owlbear layer contains a virtual layer, Outliner+ also displays an italicized Unassigned group for items that have not been assigned to one.
 
 ### Limitation
 
 Virtual layers do not override Owlbear Rodeo's layer order. For example, an item in the Props layer cannot be placed above an item in the Characters layer by using a virtual layer.
+
+## State inheritance
+
+Inheritance controls only Interaction, Locked/Unlocked, and Visible/Hidden. It does not change opacity or other item properties.
+
+- Native Owlbear layers supply the root rules for their items.
+- Virtual layers and Unassigned groups pass inherited rules through by default. A group can be made independent and enforce any enabled subset of the three properties.
+- Individual items inherit eligible rules by default. Use the item inheritance control, whose tooltip reads Block inheritance, to opt an item out; use Allow inheritance to opt it back in.
+
+Inheritance menus and status indicators appear only while Manage inheritance and the corresponding feature are enabled. An inherited item is reconciled after item changes, metadata changes, assignment moves, and rule edits. Shared rules survive virtual-layer rename and reorder, and are removed when their virtual layer is deleted.
+
+## Navigation and layout
+
+Hover an item label to see the complete displayed label and “Z-index: value”. Text items use their displayed text, with the item name as a fallback.
+
+The Total row and layer headers float while their content scrolls, keeping the current context and controls within reach.
+
+Resize the iframe by dragging its right edge, bottom edge, or bottom-right corner. Focus a resize separator and press an arrow key to adjust that axis by 10 pixels, or hold Shift for a 1-pixel adjustment. Width is limited to 300–800 pixels and height to 129–800 pixels. The last full-size dimensions are stored in this browser; once a size is chosen, Settings and layer changes scroll inside it instead of resizing it automatically.
 
 ## Quick actions
 
@@ -35,19 +67,19 @@ Creates a virtual layer inside the selected Owlbear layer. Creating the first vi
 
 Disabling clicks makes an item click-through on the map, allowing you to select and interact with items behind it. The item remains available in Outliner+, where you can enable clicks again.
 
-On an Owlbear-layer heading, the control affects every item in that Owlbear layer, including items assigned to virtual layers. On a virtual-layer heading, it affects every item assigned to that virtual layer. On an item row, it affects that item. The control appears immediately to the left of Lock at every level.
+On an Owlbear-layer heading, the control sets the layer's Interaction rule when inheritance is enabled. On a virtual-layer or Unassigned heading, it sets that group's rule when the group is independent. On an item row, it affects that item when no inherited rule applies. The control appears immediately to the left of Lock at every level when Interaction is enabled in Settings.
 
 A heading's glyph summarizes its contents: disabled clicks means every item is click-through, enabled clicks means every item can be clicked, and a gold glyph indicates a mixture of the two states. The control is disabled when the layer is empty.
 
 ### Lock / Unlock
 
-On an Owlbear-layer heading, locks or unlocks every item in that Owlbear layer, including items assigned to virtual layers. On a virtual-layer heading, it affects every item assigned to that virtual layer. On an item row, it affects that item.
+On an Owlbear-layer heading, the control sets the layer's Locked/Unlocked rule when inheritance is enabled. On a virtual-layer or Unassigned heading, it sets that group's rule when the group is independent. On an item row, it affects that item when no inherited rule applies.
 
 A heading's glyph summarizes its contents: locked means every item is locked, unlocked means every item is unlocked, and a gold glyph indicates a mixture of locked and unlocked items. The control is disabled when the layer is empty.
 
 ### Show / Hide
 
-On an Owlbear-layer heading, shows or hides every item in that Owlbear layer, including items assigned to virtual layers. On a virtual-layer heading, it affects every item assigned to that virtual layer. On an item row, it affects that item. Fog uses Cut and Uncut glyphs for the equivalent visibility actions.
+On an Owlbear-layer heading, the control sets the layer's Visible/Hidden rule when inheritance is enabled. On a virtual-layer or Unassigned heading, it sets that group's rule when the group is independent. On an item row, it affects that item when no inherited rule applies. Fog uses Cut and Uncut glyphs for the equivalent visibility actions.
 
 A heading's glyph summarizes its contents: visible means every item is visible, hidden means every item is hidden, and a gold glyph indicates a mixture of visible and hidden items. The control is disabled when the layer is empty.
 

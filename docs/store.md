@@ -1,31 +1,27 @@
 ---
-title: Outliner
-description: Manage layers, search for items and view an outline of your scenes
-author: Owlbear Rodeo
+title: Outliner+
+description: Organize scene items with virtual layers, inheritance, and configurable layer controls
+author: ex Asperis
 image: https://raw.githubusercontent.com/owlbear-rodeo/outliner/main/docs/header.jpg
-icon: https://outliner.owlbear.rodeo/logo.png
+icon: https://outliner-plus.ex-asperis.com/logo.png
 tags:
-  - built-by-owlbear
   - other
-manifest: https://outliner.owlbear.rodeo/manifest.json
-learn-more: https://extensions.owlbear.rodeo/outliner
+manifest: https://outliner-plus.ex-asperis.com/manifest.json
+learn-more: https://outliner-plus.ex-asperis.com
 ---
 
-# Outliner
+# Outliner+
 
-Manage layers, search for items and view an outline of your scenes.
+Browse, search, and organize scene items by layer. Create virtual layers for predictable stacking, inherit interaction, locking, and visibility rules, and choose which native layers appear in the panel.
 
 ![outliner action](https://raw.githubusercontent.com/owlbear-rodeo/outliner/main/docs/action.jpg)
 
-The Outliner will show a list of all the layers available.
-You can expand a layer by clicking it. Once expanded the Outliner will show every item in that layer.
-You can change the order of an item by dragging and dropping it above or below another item.
-You can also move an item to another layer by dragging it to that layer when it is expanded.
+Outliner+ adds item and virtual-layer z-index tooltips, floating headers, Scene totals, bulk layer-display controls, and a resizable panel whose dimensions are saved locally.
 
-Double clicking an item in the Outliner will focus your viewport on that item.
+Drag items and virtual layers to reorder them, or use Send controls in the panel and Owlbear Rodeo context menu. Double-click an item to focus the viewport on it without changing the current zoom.
 
-Clicking the search icon at the top of the Outliner will allow you to filter the list of items by the given search term.
+Shared inheritance rules control Interaction, Locked/Unlocked, and Visible/Hidden states. Virtual layers and Unassigned groups pass rules through by default or can independently enforce selected states; individual items can block inheritance.
 
 **Support**
 
-If you need support for this extension you can email <support@owlbear.rodeo>
+For support, visit the [Outliner+ repository](https://github.com/exAsperis/OBR-Outliner-plus).

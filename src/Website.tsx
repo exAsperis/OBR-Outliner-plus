@@ -6,6 +6,10 @@ import LockIcon from "@mui/icons-material/LockOpenRounded";
 import ClickThroughIcon from "@mui/icons-material/DoNotTouchRounded";
 import SendIcon from "@mui/icons-material/SendRounded";
 import VisibilityIcon from "@mui/icons-material/VisibilityRounded";
+import SettingsIcon from "@mui/icons-material/SettingsRounded";
+import InheritanceIcon from "@mui/icons-material/AccountTreeRounded";
+import ResizeIcon from "@mui/icons-material/AspectRatioRounded";
+import LayersIcon from "@mui/icons-material/LayersRounded";
 import { useState, type ReactNode } from "react";
 import instructions from "../website-assets/instructions.md?raw";
 import hero from "../website-assets/outliner-plus-hero.png";
@@ -15,6 +19,10 @@ import "./website.css";
 const INSTALL_URL = "https://outliner-plus.ex-asperis.com/manifest.json";
 
 const headingIcons: Record<string, ReactNode> = {
+  "Settings and layer display": <SettingsIcon />,
+  "Virtual layers": <LayersIcon />,
+  "State inheritance": <InheritanceIcon />,
+  "Navigation and layout": <ResizeIcon />,
   "Create virtual layer": <AddIcon />,
   "Disable / Enable clicks": <ClickThroughIcon />,
   "Lock / Unlock": <LockIcon />,
@@ -106,7 +114,7 @@ export function Website() {
         <div className="hero-copy">
           <p className="eyebrow">Owlbear Rodeo extension</p>
           <h1>Keep every Scene<br />in perfect order.</h1>
-          <p>Browse, search, and organize Scene items with virtual layers and fast controls for stacking, visibility, and locking.</p>
+          <p>Organize Scene items with virtual layers, inherited state controls, configurable layer visibility, and a workspace that resizes to fit.</p>
           <div className="hero-actions">
             <button type="button" onClick={() => void copyInstallLink()}><span>{copied ? "Copied" : "Copy install link"}</span></button>
             <a href="#overview">Read the guide</a>
@@ -118,7 +126,10 @@ export function Website() {
         <aside>
           <p>On this page</p>
           <a href="#overview">Overview</a>
+          <a href="#settings-and-layer-display">Settings</a>
           <a href="#virtual-layers">Virtual layers</a>
+          <a href="#state-inheritance">Inheritance</a>
+          <a href="#navigation-and-layout">Navigation and layout</a>
           <a href="#quick-actions">Quick actions</a>
           <a href="#owlbear-context-menu">Context menu</a>
           <div className="install-note"><strong>Install in Owlbear Rodeo</strong><code>{INSTALL_URL}</code><button type="button" onClick={() => void copyInstallLink()}>{copied ? "Copied" : "Copy link"}</button></div>

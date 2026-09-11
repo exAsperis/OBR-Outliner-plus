@@ -19,7 +19,7 @@ ignored by Git so it cannot replace the production manifest accidentally:
 ```json
 {
   "name": "Outliner+ (Local)",
-  "version": "0.6.3-local",
+  "version": "0.6.4-local",
   "manifest_version": 1,
   "author": "ex Asperis",
   "icon": "/logo.png",
@@ -28,7 +28,7 @@ ignored by Git so it cannot replace the production manifest accidentally:
   "action": {
     "title": "Outliner+ (Local)",
     "icon": "/icon.svg",
-    "popover": "/extension.html?v=0.6.3-local",
+    "popover": "/extension.html?v=0.6.4-local",
     "height": 129,
     "width": 375
   }
@@ -72,7 +72,8 @@ Other source changes are hot-reloaded by Vite during development.
 
 ## Features
 
-- Browse, search, select, lock, and hide scene items by layer.
+- Browse, search, select, lock, hide, and control interaction for scene items by
+  layer. Item tooltips show the complete displayed label and z-index.
 - Locate an item without changing the current viewport zoom.
 - Send items to the front or back from the Outliner list.
 - Move selected canvas items forward, backward, to the front, or to the back
@@ -80,11 +81,35 @@ Other source changes are hot-reloaded by Vite during development.
 - Send selected canvas items to any Owlbear Rodeo layer from a top-to-bottom
   layer menu.
 - Create scene-specific virtual layers inside native Owlbear layers, with strict
-  stacking boundaries and independent item ordering.
+  stacking boundaries, independent item ordering, a dotted-outline glyph, and
+  tooltips showing each layer's name and z-index range.
 - Rename, reorder, hide, lock, and delete virtual layers without changing or
   deleting their objects.
 - Drag items between virtual layers or use the canvas Send to Layer menu for
   virtual-layer-aware multi-selection moves.
+- Use shared inheritance rules for Interaction, Locked/Unlocked, and
+  Visible/Hidden states. Native layers provide root rules; virtual layers and
+  Unassigned can pass rules through or enforce selected states, while individual
+  items can block inheritance.
+- Choose which native layers appear in Outliner+ from Settings without changing
+  scene contents. The fixed Total row reports all scene items and the number in
+  disabled layers, with shortcuts to hide empty layers or show all populated
+  layers.
+- Keep context while scrolling with floating Total, native-layer, and
+  virtual-layer headers.
+- Resize the Outliner+ iframe from its right edge, bottom edge, or corner. Pointer
+  and keyboard resizing are supported, and the last full-size dimensions are
+  saved in the browser.
+
+Settings and iframe dimensions are browser-local. Virtual-layer assignments and
+inheritance rules are stored as shared scene metadata. Scene-management controls
+remain Game Master only and respect Owlbear Rodeo item permissions.
+
+## Versioning
+
+Outliner+ follows [Semantic Versioning](https://semver.org/). The production build
+checks that the package, source, current manifest, versioned manifest, and
+cache-busting URLs all use the same version.
 
 ## Azure Static Web Apps
 
